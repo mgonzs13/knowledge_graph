@@ -88,6 +88,7 @@ protected:
   std::string graph_id;
   rclcpp::Time last_ts;
 
+  void update_graph(knowledge_graph_msgs::msg::Graph msg);
   void update_callback(knowledge_graph_msgs::msg::GraphUpdate::UniquePtr msg);
   void reqsync_timer_callback();
 

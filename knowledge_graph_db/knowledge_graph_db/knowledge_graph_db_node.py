@@ -51,6 +51,7 @@ class KnowledgeGraphDbNode(Node):
         self.graph.remove_edge = self.remove_edge
 
         self.get_logger().info("Knowledge Graph DB Node Started")
+        self.graph.reqsync_timer_callback()
 
     def create_connection(self, db_file: str) -> sqlite3.Connection:
         try:

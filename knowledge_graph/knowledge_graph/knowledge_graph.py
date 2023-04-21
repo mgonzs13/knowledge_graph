@@ -260,6 +260,15 @@ class KnowledgeGraph:
 
         return True
 
+    def update_gaph(self, msg: GraphMsg) -> None:
+        for n in msg.nodes:
+            self.update_node(n, False)
+
+        for e in msg.edges:
+            self.update_edge(e, False)
+
+        self.last_ts = self.node.get_clock().now()
+
     def update_callback(self, msg: GraphUpdate) -> None:
         author_id = msg.node_id
         element = msg.element_type
@@ -298,17 +307,10 @@ class KnowledgeGraph:
             if operation == GraphUpdate.SYNC:
                 if msg.target_node == self.graph_id:
                     self.reqsync_timer.cancel()
-                    # self.graph = msg.graph
-
-                    for n in msg.graph.nodes:
-                        self.update_node(n, False)
-
-                    for e in msg.graph.edges:
-                        self.update_edge(e, False)
-
-                    self.last_ts = ts
+                    self.update_gaph(msg.graph)
 
             elif operation == GraphUpdate.REQSYNC:
                 if msg.node_id != self.graph_id:
                     self.publish_update(
                         GraphUpdate.SYNC, self.graph, msg.node_id)
+                    self.update_gaph(msg.graph)

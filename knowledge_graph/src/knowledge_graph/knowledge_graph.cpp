@@ -312,6 +312,19 @@ bool KnowledgeGraph::update_edge(const knowledge_graph_msgs::msg::Edge &edge,
   return true;
 }
 
+void KnowledgeGraph::update_graph(knowledge_graph_msgs::msg::Graph msg) {
+
+  for (const auto &n : msg.nodes) {
+    this->update_node(n, false);
+  }
+
+  for (const auto &e : msg.edges) {
+    this->update_edge(e, false);
+  }
+
+  this->last_ts = this->provided_node->get_clock()->now();
+}
+
 void KnowledgeGraph::update_callback(
     knowledge_graph_msgs::msg::GraphUpdate::UniquePtr msg) {
   const auto &author_id = msg->node_id;
@@ -372,17 +385,7 @@ void KnowledgeGraph::update_callback(
 
       if (msg->target_node == this->graph_id) {
         this->reqsync_timer->cancel();
-        // *this->graph = msg->graph;
-
-        for (const auto &n : msg->graph.nodes) {
-          this->update_node(n, false);
-        }
-
-        for (const auto &e : msg->graph.edges) {
-          this->update_edge(e, false);
-        }
-
-        this->last_ts = ts;
+        this->update_graph(msg->graph);
       }
       break;
 
@@ -396,6 +399,8 @@ void KnowledgeGraph::update_callback(
         out_msg.element_type = knowledge_graph_msgs::msg::GraphUpdate::GRAPH;
         out_msg.graph = *this->graph;
         this->update_pub->publish(out_msg);
+
+        this->update_graph(msg->graph);
       }
       break;
     }
