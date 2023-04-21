@@ -1,2 +1,0 @@
-string key
-ros2_knowledge_graph_msgs/Content value

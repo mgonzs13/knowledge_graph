@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="KnowledgeGraph" type="knowledge_graph_viewer.knowledge_graph.KnowledgeGraph" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin to visualize a Knowledge graph.
+    </description>
+    <qtgui>
+      <group>
+        <label>Introspection</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to introspection.</statustip>
+      </group>
+      <label>Knowledge Graph</label>
+      <icon type="theme">preferences-system-network</icon>
+      <statustip>A Python GUI plugin for visualizing the Knowledge Graph.</statustip>
+    </qtgui>
+  </class>
+</library>

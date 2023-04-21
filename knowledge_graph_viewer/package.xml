@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>knowledge_graph_viewer</name>
+  <version>0.2.0</version>
+  <description>knowledge_graph_viewer provides a GUI plugin for visualizing the graph</description>
+  <maintainer email="mgons@unileon.es">Miguel Ángel González Santamarta</maintainer>
+  <license>BSD</license>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python_qt_binding</exec_depend>
+  <exec_depend>qt_dotgraph</exec_depend>
+  <exec_depend>rqt_gui</exec_depend>
+  <exec_depend>rqt_gui_py</exec_depend>
+  <exec_depend>knowledge_graph_msgs</exec_depend>
+  
+  <export>
+    <build_type>ament_python</build_type>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

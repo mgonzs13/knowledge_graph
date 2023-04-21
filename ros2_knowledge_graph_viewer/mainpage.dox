@@ -1,6 +1,0 @@
-/**
-\mainpage
-\htmlinclude manifest.html
-
-\b ros2_knowledge_graph_viewer provides a GUI plugin for visualizing the BICA graph.
-*/
