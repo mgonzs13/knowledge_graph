@@ -4,7 +4,7 @@ package_name = 'knowledge_graph_viewer'
 setup(
     name=package_name,
     version='0.2.0',
-    package_dir={'': ''},
+    # package_dir={'': ''},
     packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages',
