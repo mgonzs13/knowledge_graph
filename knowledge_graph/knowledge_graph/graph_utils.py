@@ -28,7 +28,7 @@ def new_node(node_name: str, node_class: str) -> Node:
     return msg
 
 
-def new_content(content: Any, static_tf: bool = False) -> Content:
+def new_content(content: Any) -> Content:
     msg = Content()
 
     if isinstance(content, bool):
@@ -75,12 +75,11 @@ def new_content(content: Any, static_tf: bool = False) -> Content:
     return msg
 
 
-def new_edge(edge_source: str, edge_target: str,
-             content: Any, static_tf: bool = False) -> Edge:
+def new_edge(edge_class: str, edge_source: str, edge_target: str) -> Edge:
     msg = Edge()
+    msg.edge_class = edge_class
     msg.source_node = edge_source
     msg.target_node = edge_target
-    msg.content = new_content(content, static_tf)
     return msg
 
 
