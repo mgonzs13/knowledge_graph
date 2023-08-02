@@ -163,7 +163,7 @@ class KnowledgeGraph:
 
         return removed
 
-    def get_nodes(self) -> List[Node]:
+    def get_nodes(self) -> List[NodeMsg]:
         return self.graph.nodes
 
     def get_edges(self,
