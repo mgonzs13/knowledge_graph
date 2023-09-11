@@ -113,10 +113,11 @@ def add_property(element: Union[Node, Edge], key: str, content: Any) -> bool:
         # "Adding a property of type ERROR"
         return False
 
+    p: Property
     for p in element.properties:
         if (p.key == key):
             found = True
-            p.content = newc
+            p.value = newc
             break
 
     if not found:
@@ -130,6 +131,7 @@ def add_property(element: Union[Node, Edge], key: str, content: Any) -> bool:
 
 def get_property(element: Union[Node, Edge], key: str) -> Any:
 
+    p: Property
     for p in element.properties:
         if p.key == key:
             return get_content(p.value)
@@ -139,6 +141,7 @@ def get_property(element: Union[Node, Edge], key: str) -> Any:
 
 def get_property_type(element: Union[Node, Edge], key: str) -> int:
 
+    p: Property
     for p in element.properties:
         if p.key == key:
             return p.value.type
