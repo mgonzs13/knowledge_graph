@@ -40,8 +40,8 @@ def new_content(content: Any) -> Content:
         msg.type = Content.INT
 
     elif isinstance(content, float):
-        msg.float_value = content
-        msg.type = Content.FLOAT
+        msg.double_value = content
+        msg.type = Content.DOUBLE
 
     elif isinstance(content, str):
         msg.string_value = content
@@ -59,8 +59,8 @@ def new_content(content: Any) -> Content:
                 msg.type = Content.VINT
 
             elif isinstance(content[0], float):
-                msg.float_vector = content
-                msg.type = Content.VFLOAT
+                msg.double_vector = content
+                msg.type = Content.VDOUBLE
 
             elif isinstance(content[0], str):
                 msg.string_vector = content
@@ -89,16 +89,16 @@ def get_content(content: Content) -> Any:
         return content.bool_value
     elif content.type == Content.INT:
         return content.int_value
-    elif content.type == Content.FLOAT:
-        return content.float_value
+    elif content.type == Content.DOUBLE:
+        return content.double_value
     elif content.type == Content.STRING:
         return content.string_value
     elif content.type == Content.VBOOL:
         return content.bool_vector
     elif content.type == Content.VINT:
         return content.int_vector
-    elif content.type == Content.VFLOAT:
-        return content.float_vector
+    elif content.type == Content.VDOUBLE:
+        return content.double_vector
     elif content.type == Content.VSTRING:
         return content.string_vector
     else:
