@@ -122,7 +122,7 @@ class KnowledgeGraph:
 
         if removed:
             if sync:
-                self.publish_update(GraphUpdate.REMOVE, node)
+                self.publish_update(GraphUpdate.REMOVE, n)
 
             self.last_ts = self.node.get_clock().now()
 
