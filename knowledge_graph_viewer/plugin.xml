@@ -1,5 +1,5 @@
 <library path="src">
-  <class name="KnowledgeGraph" type="knowledge_graph_viewer.knowledge_graph.KnowledgeGraph" base_class_type="rqt_gui_py::Plugin">
+  <class name="KnowledgeGraphPlugin" type="knowledge_graph_viewer.knowledge_graph_plugin.KnowledgeGraphPlugin" base_class_type="rqt_gui_py::Plugin">
     <description>
       A Python GUI plugin to visualize a Knowledge graph.
     </description>

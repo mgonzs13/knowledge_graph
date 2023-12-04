@@ -52,24 +52,24 @@ from rqt_gui_py.plugin import Plugin
 # from qtgui_plugin.pygraphvizfactory import PygraphvizFactory
 
 import rclpy
-from .dotcode import KnowledgeGraphDotcodeGenerator
-from .interactive_graphics_view import InteractiveGraphicsView
-from .knowledge_graph_impl import KnowledgeGraphImpl
+from knowledge_graph_viewer.dotcode import KnowledgeGraphDotcodeGenerator
+from knowledge_graph_viewer.interactive_graphics_view import InteractiveGraphicsView
+from knowledge_graph_viewer.knowledge_graph_impl import KnowledgeGraphImpl
 
 unicode = str  # we"re on python3
 
 
-class KnowledgeGraph(Plugin):
+class KnowledgeGraphPlugin(Plugin):
 
     _deferred_fit_in_view = Signal()
 
     def __init__(self, context):
-        super(KnowledgeGraph, self).__init__(context)
+        super(KnowledgeGraphPlugin, self).__init__(context)
 
         self._node = context.node
         self._logger = self._node.get_logger().get_child(
-            "knowledge_graph_viewer.knowledge_graph.KnowledgeGraph")
-        self.setObjectName("KnowledgeGraph")
+            "knowledge_graph_viewer.knowledge_graph.KnowledgeGraphPlugin")
+        self.setObjectName("KnowledgeGraphPlugin")
 
         self._knowledge_graph = KnowledgeGraphImpl()
         self._current_dotcode = None
@@ -82,7 +82,7 @@ class KnowledgeGraph(Plugin):
 
         _, package_path = get_resource("packages", "knowledge_graph_viewer")
         ui_file = os.path.join(
-            package_path, "share", "knowledge_graph_viewer", "resource", "KnowledgeGraph.ui")
+            package_path, "share", "knowledge_graph_viewer", "resource", "KnowledgeGraphPlugin.ui")
         loadUi(ui_file, self._widget, {
                "InteractiveGraphicsView": InteractiveGraphicsView})
         self._widget.setObjectName("KnowledgeGraphUi")

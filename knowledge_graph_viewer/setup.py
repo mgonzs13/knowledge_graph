@@ -1,16 +1,16 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 package_name = 'knowledge_graph_viewer'
 setup(
     name=package_name,
     version='0.2.0',
     # package_dir={'': ''},
-    packages=[package_name],
+    packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name + '/resource',
-         ['resource/KnowledgeGraph.ui']),
+         ['resource/KnowledgeGraphPlugin.ui']),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name, ['plugin.xml']),
     ],
@@ -32,7 +32,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'knowledge_graph_viewer = knowledge_graph_viewer.main:main',
+            'rqt_knowledge_graph = knowledge_graph_viewer.main:main',
         ],
     },
 )
