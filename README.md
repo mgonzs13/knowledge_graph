@@ -1,5 +1,8 @@
 # knowledge_graph
 
+This is a fork of the [knowledge_graph](https://github.com/mgonzs13/knowledge_graph) package.
+
+
 Many times, when you are developing a Software Architecture for robots, you need shared memory where to store information. There are many strategies for this. One of them is a blackboard. Another approach is a graph in which we store elements as graph nodes and relations as graph edges.
 
 ROS 2 knowledge graph provides you a way to share a graph between nodes running in an application. The graph is distributed in all the ROS 2 nodes. Each node contains a replica that is synchronized with all the other replicas, guaranteeing a Strong Eventual Consistency.
@@ -8,11 +11,10 @@ ROS 2 knowledge graph provides you a way to share a graph between nodes running 
 
 ```shell
 $ cd ~/ros2_ws/src
-$ git clone https://github.com/mgonzs13/knowledge_graph.git
-$ pip3 install -r knowledge_graph/requirements.txt
+$ git clone https://github.com/aerostack2/knowledge_graph.git
 $ cd ~/ros2_ws
 $ rosdep install --from-paths src --ignore-src -r -y
-$ colcon build
+$ colcon build --symlink-install
 ```
 
 ## Usage
