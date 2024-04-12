@@ -22,6 +22,7 @@ install(DIRECTORY include/
 
 add_library(${PROJECT_NAME} SHARED
   src/knowledge_graph/knowledge_graph.cpp
+  src/knowledge_graph/graph_utils.cpp
 )
 ament_target_dependencies(${PROJECT_NAME} ${dependencies})
 install(TARGETS
