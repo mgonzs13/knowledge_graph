@@ -37,6 +37,34 @@ knowledge_graph_msgs::msg::Content new_content(const T &content) {
   return ret;
 }
 
+template <>
+knowledge_graph_msgs::msg::Content new_content<bool>(const bool &content);
+template <>
+knowledge_graph_msgs::msg::Content new_content<int>(const int &content);
+template <>
+knowledge_graph_msgs::msg::Content new_content<float>(const float &content);
+template <>
+knowledge_graph_msgs::msg::Content new_content<double>(const double &content);
+
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::string>(const std::string &content);
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::vector<bool>>(const std::vector<bool> &content);
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::vector<int>>(const std::vector<int> &content);
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::vector<float>>(const std::vector<float> &content);
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::vector<double>>(const std::vector<double> &content);
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::vector<std::string>>(const std::vector<std::string> &content);
+
 knowledge_graph_msgs::msg::Node new_node(const std::string &node_name,
                                          const std::string &node_class);
 
@@ -119,6 +147,50 @@ std::optional<T> get_property(knowledge_graph_msgs::msg::Edge &edge,
                               const std::string key) {
   return get_property<T>(edge.properties);
 }
+
+template <>
+knowledge_graph_msgs::msg::Content
+new_content<std::vector<std::string>>(const std::vector<std::string> &content);
+
+template <>
+std::optional<bool>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<int>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<float>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<double>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<std::string>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<std::vector<bool>>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<std::vector<int>>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<std::vector<float>>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<std::vector<double>>
+get_content(const knowledge_graph_msgs::msg::Content &content);
+
+template <>
+std::optional<std::vector<std::string>>
+get_content(const knowledge_graph_msgs::msg::Content &content);
 
 uint8_t
 get_property_type(std::vector<knowledge_graph_msgs::msg::Property> &properties,
