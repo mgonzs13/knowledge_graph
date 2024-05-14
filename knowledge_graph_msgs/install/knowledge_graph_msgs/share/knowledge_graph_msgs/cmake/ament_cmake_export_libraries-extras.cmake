@@ -1,0 +1,1 @@
+/home/carmendrpr/ros2_ws/src/knowledge_graph/knowledge_graph_msgs/build/knowledge_graph_msgs/ament_cmake_export_libraries/ament_cmake_export_libraries-extras.cmake
