@@ -1,3 +1,4 @@
+// Copyright 2024 Miguel Fernández Cortizas
 // Copyright 2023 Miguel Ángel González Santamarta
 // Copyright 2021 Intelligent Robotics Lab
 //
@@ -27,38 +28,42 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 
-namespace knowledge_graph {
+namespace knowledge_graph
+{
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
 
-KnowledgeGraph::KnowledgeGraph(rclcpp::Node *provided_node)
-    : provided_node(provided_node) {
+KnowledgeGraph::KnowledgeGraph(rclcpp::Node * provided_node)
+: provided_node(provided_node)
+{
 
   this->graph = std::make_unique<knowledge_graph_msgs::msg::Graph>();
   this->graph_id = this->provided_node->get_name();
 
   this->update_pub =
-      this->provided_node
-          ->create_publisher<knowledge_graph_msgs::msg::GraphUpdate>(
-              "graph_update", rclcpp::QoS(100).reliable());
+    this->provided_node
+    ->create_publisher<knowledge_graph_msgs::msg::GraphUpdate>(
+    "graph_update", rclcpp::QoS(100).reliable());
   this->update_sub =
-      provided_node
-          ->create_subscription<knowledge_graph_msgs::msg::GraphUpdate>(
-              "graph_update", rclcpp::QoS(100).reliable(),
-              std::bind(&KnowledgeGraph::update_callback, this, _1));
+    provided_node
+    ->create_subscription<knowledge_graph_msgs::msg::GraphUpdate>(
+    "graph_update", rclcpp::QoS(100).reliable(),
+    std::bind(&KnowledgeGraph::update_callback, this, _1));
 
   this->last_ts = this->provided_node->now();
   this->start_time = this->provided_node->now();
 
   this->reqsync_timer = this->provided_node->create_wall_timer(
-      100ms, std::bind(&KnowledgeGraph::reqsync_timer_callback, this));
+    100ms, std::bind(&KnowledgeGraph::reqsync_timer_callback, this));
   this->reqsync_timer_callback();
 }
 
-void KnowledgeGraph::reqsync_timer_callback() {
+void KnowledgeGraph::reqsync_timer_callback()
+{
   if ((this->provided_node->get_clock()->now() - this->start_time).seconds() >
-      1.0) {
+    1.0)
+  {
     this->reqsync_timer->cancel();
   }
 
@@ -71,7 +76,8 @@ void KnowledgeGraph::reqsync_timer_callback() {
   this->update_pub->publish(hello_msg);
 }
 
-bool KnowledgeGraph::remove_node(const std::string node, bool sync) {
+bool KnowledgeGraph::remove_node(const std::string node, bool sync)
+{
   bool removed = false;
   auto it = this->graph->nodes.begin();
   while (!removed && it != this->graph->nodes.end()) {
@@ -100,7 +106,7 @@ bool KnowledgeGraph::remove_node(const std::string node, bool sync) {
       update_msg.stamp = this->provided_node->get_clock()->now();
       update_msg.node_id = this->graph_id;
       update_msg.operation_type =
-          knowledge_graph_msgs::msg::GraphUpdate::REMOVE;
+        knowledge_graph_msgs::msg::GraphUpdate::REMOVE;
       update_msg.element_type = knowledge_graph_msgs::msg::GraphUpdate::NODE;
       update_msg.removed_node = node;
       this->update_pub->publish(update_msg);
@@ -112,12 +118,14 @@ bool KnowledgeGraph::remove_node(const std::string node, bool sync) {
   return removed;
 }
 
-bool KnowledgeGraph::exist_node(const std::string node) {
+bool KnowledgeGraph::exist_node(const std::string node)
+{
   return this->get_node(node).has_value();
 }
 
 std::optional<knowledge_graph_msgs::msg::Node>
-KnowledgeGraph::get_node(const std::string node) {
+KnowledgeGraph::get_node(const std::string node)
+{
   auto it = this->graph->nodes.begin();
   while (it != this->graph->nodes.end()) {
     if (it->node_name == node) {
@@ -130,23 +138,27 @@ KnowledgeGraph::get_node(const std::string node) {
   return {};
 }
 
-const std::vector<std::string> KnowledgeGraph::get_node_names() {
+const std::vector<std::string> KnowledgeGraph::get_node_names()
+{
   std::vector<std::string> ret;
-  for (const auto &node : this->graph->nodes) {
+  for (const auto & node : this->graph->nodes) {
     ret.push_back(node.node_name);
   }
   return ret;
 }
 
-bool KnowledgeGraph::remove_edge(const knowledge_graph_msgs::msg::Edge &edge,
-                                 bool sync) {
+bool KnowledgeGraph::remove_edge(
+  const knowledge_graph_msgs::msg::Edge & edge,
+  bool sync)
+{
   bool removed = false;
 
   auto it = this->graph->edges.begin();
   while (!removed && it != this->graph->edges.end()) {
     if (it->source_node == edge.source_node &&
-        it->target_node == edge.target_node &&
-        it->edge_class == edge.edge_class) {
+      it->target_node == edge.target_node &&
+      it->edge_class == edge.edge_class)
+    {
       it = this->graph->edges.erase(it);
       removed = true;
     } else {
@@ -160,7 +172,7 @@ bool KnowledgeGraph::remove_edge(const knowledge_graph_msgs::msg::Edge &edge,
       update_msg.stamp = this->provided_node->get_clock()->now();
       update_msg.node_id = this->graph_id;
       update_msg.operation_type =
-          knowledge_graph_msgs::msg::GraphUpdate::REMOVE;
+        knowledge_graph_msgs::msg::GraphUpdate::REMOVE;
       update_msg.element_type = knowledge_graph_msgs::msg::GraphUpdate::EDGE;
       update_msg.edge = edge;
       this->update_pub->publish(update_msg);
@@ -173,11 +185,13 @@ bool KnowledgeGraph::remove_edge(const knowledge_graph_msgs::msg::Edge &edge,
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_edges(const std::string &source,
-                          const std::string &target) {
+KnowledgeGraph::get_edges(
+  const std::string & source,
+  const std::string & target)
+{
   std::vector<knowledge_graph_msgs::msg::Edge> ret;
 
-  for (auto &edge : this->graph->edges) {
+  for (auto & edge : this->graph->edges) {
     if (edge.source_node == source && edge.target_node == target) {
       ret.push_back(edge);
     }
@@ -187,10 +201,11 @@ KnowledgeGraph::get_edges(const std::string &source,
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_edges(const std::string &edge_class) {
+KnowledgeGraph::get_edges(const std::string & edge_class)
+{
   std::vector<knowledge_graph_msgs::msg::Edge> ret;
 
-  for (auto &edge : this->graph->edges) {
+  for (auto & edge : this->graph->edges) {
     if (edge.edge_class == edge_class) {
       ret.push_back(edge);
     }
@@ -200,10 +215,11 @@ KnowledgeGraph::get_edges(const std::string &edge_class) {
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_out_edges(const std::string &source) {
+KnowledgeGraph::get_out_edges(const std::string & source)
+{
   std::vector<knowledge_graph_msgs::msg::Edge> ret;
 
-  for (auto &edge : this->graph->edges) {
+  for (auto & edge : this->graph->edges) {
     if (edge.source_node == source) {
       ret.push_back(edge);
     }
@@ -213,10 +229,11 @@ KnowledgeGraph::get_out_edges(const std::string &source) {
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_in_edges(const std::string &target) {
+KnowledgeGraph::get_in_edges(const std::string & target)
+{
   std::vector<knowledge_graph_msgs::msg::Edge> ret;
 
-  for (auto &edge : this->graph->edges) {
+  for (auto & edge : this->graph->edges) {
     if (edge.target_node == target) {
       ret.push_back(edge);
     }
@@ -225,16 +242,20 @@ KnowledgeGraph::get_in_edges(const std::string &target) {
   return ret;
 }
 
-size_t KnowledgeGraph::get_num_edges() const {
+size_t KnowledgeGraph::get_num_edges() const
+{
   return this->graph->edges.size();
 }
 
-size_t KnowledgeGraph::get_num_nodes() const {
+size_t KnowledgeGraph::get_num_nodes() const
+{
   return this->graph->nodes.size();
 }
 
-bool KnowledgeGraph::update_node(const knowledge_graph_msgs::msg::Node &node,
-                                 bool sync) {
+bool KnowledgeGraph::update_node(
+  const knowledge_graph_msgs::msg::Node & node,
+  bool sync)
+{
   bool found = false;
   auto it = this->graph->nodes.begin();
   while (!found && it != this->graph->nodes.end()) {
@@ -263,20 +284,24 @@ bool KnowledgeGraph::update_node(const knowledge_graph_msgs::msg::Node &node,
   return true;
 }
 
-bool KnowledgeGraph::update_edge(const knowledge_graph_msgs::msg::Edge &edge,
-                                 bool sync) {
+bool KnowledgeGraph::update_edge(
+  const knowledge_graph_msgs::msg::Edge & edge,
+  bool sync)
+{
 
   if (!this->exist_node(edge.source_node)) {
-    RCLCPP_ERROR_STREAM(this->provided_node->get_logger(),
-                        "Node source [" << edge.source_node
-                                        << "] doesn't exist adding edge");
+    RCLCPP_ERROR_STREAM(
+      this->provided_node->get_logger(),
+      "Node source [" << edge.source_node
+                      << "] doesn't exist adding edge");
     return false;
   }
 
   if (!this->exist_node(edge.target_node)) {
-    RCLCPP_ERROR_STREAM(this->provided_node->get_logger(),
-                        "Node target [" << edge.target_node
-                                        << "] doesn't exist adding edge");
+    RCLCPP_ERROR_STREAM(
+      this->provided_node->get_logger(),
+      "Node target [" << edge.target_node
+                      << "] doesn't exist adding edge");
     return false;
   }
 
@@ -284,8 +309,9 @@ bool KnowledgeGraph::update_edge(const knowledge_graph_msgs::msg::Edge &edge,
   auto it = this->graph->edges.begin();
   while (!found && it != this->graph->edges.end()) {
     if (it->source_node == edge.source_node &&
-        it->target_node == edge.target_node &&
-        it->edge_class == edge.edge_class) {
+      it->target_node == edge.target_node &&
+      it->edge_class == edge.edge_class)
+    {
       *it = edge;
       found = true;
     }
@@ -312,13 +338,14 @@ bool KnowledgeGraph::update_edge(const knowledge_graph_msgs::msg::Edge &edge,
   return true;
 }
 
-void KnowledgeGraph::update_graph(knowledge_graph_msgs::msg::Graph msg) {
+void KnowledgeGraph::update_graph(knowledge_graph_msgs::msg::Graph msg)
+{
 
-  for (const auto &n : msg.nodes) {
+  for (const auto & n : msg.nodes) {
     this->update_node(n, false);
   }
 
-  for (const auto &e : msg.edges) {
+  for (const auto & e : msg.edges) {
     this->update_edge(e, false);
   }
 
@@ -326,85 +353,88 @@ void KnowledgeGraph::update_graph(knowledge_graph_msgs::msg::Graph msg) {
 }
 
 void KnowledgeGraph::update_callback(
-    knowledge_graph_msgs::msg::GraphUpdate::UniquePtr msg) {
-  const auto &author_id = msg->node_id;
-  const auto &element = msg->element_type;
-  const auto &operation = msg->operation_type;
-  const auto &ts = msg->stamp;
+  knowledge_graph_msgs::msg::GraphUpdate::UniquePtr msg)
+{
+  const auto & author_id = msg->node_id;
+  const auto & element = msg->element_type;
+  const auto & operation = msg->operation_type;
+  const auto & ts = msg->stamp;
 
   if (author_id == this->graph_id) {
     return;
   }
 
   if (rclcpp::Time(ts) < this->last_ts &&
-      operation != knowledge_graph_msgs::msg::GraphUpdate::REQSYNC &&
-      operation != knowledge_graph_msgs::msg::GraphUpdate::SYNC) {
-    RCLCPP_ERROR(this->provided_node->get_logger(),
-                 "UNORDERER UPDATE [%d] %lf > %lf", operation,
-                 this->last_ts.seconds(), rclcpp::Time(ts).seconds());
+    operation != knowledge_graph_msgs::msg::GraphUpdate::REQSYNC &&
+    operation != knowledge_graph_msgs::msg::GraphUpdate::SYNC)
+  {
+    RCLCPP_ERROR(
+      this->provided_node->get_logger(),
+      "UNORDERER UPDATE [%d] %lf > %lf", operation,
+      this->last_ts.seconds(), rclcpp::Time(ts).seconds());
   }
 
   switch (element) {
-  case knowledge_graph_msgs::msg::GraphUpdate::NODE: {
-    if (author_id == this->graph_id) {
-      return;
-    }
+    case knowledge_graph_msgs::msg::GraphUpdate::NODE: {
+        if (author_id == this->graph_id) {
+          return;
+        }
 
-    switch (operation) {
-    case knowledge_graph_msgs::msg::GraphUpdate::UPDATE: {
-      this->update_node(msg->node, false);
-      break;
-    }
+        switch (operation) {
+          case knowledge_graph_msgs::msg::GraphUpdate::UPDATE: {
+              this->update_node(msg->node, false);
+              break;
+            }
 
-    case knowledge_graph_msgs::msg::GraphUpdate::REMOVE: {
-      this->remove_node(msg->node.node_name, false);
-      break;
-    }
-    }
-  } break;
+          case knowledge_graph_msgs::msg::GraphUpdate::REMOVE: {
+              this->remove_node(msg->node.node_name, false);
+              break;
+            }
+        }
+      } break;
 
-  case knowledge_graph_msgs::msg::GraphUpdate::EDGE: {
-    if (author_id == this->graph_id) {
-      return;
-    }
+    case knowledge_graph_msgs::msg::GraphUpdate::EDGE: {
+        if (author_id == this->graph_id) {
+          return;
+        }
 
-    switch (operation) {
-    case knowledge_graph_msgs::msg::GraphUpdate::UPDATE:
-      this->update_edge(msg->edge, false);
-      break;
+        switch (operation) {
+          case knowledge_graph_msgs::msg::GraphUpdate::UPDATE:
+            this->update_edge(msg->edge, false);
+            break;
 
-    case knowledge_graph_msgs::msg::GraphUpdate::REMOVE:
-      this->remove_edge(msg->edge, false);
-      break;
-    }
-  } break;
+          case knowledge_graph_msgs::msg::GraphUpdate::REMOVE:
+            this->remove_edge(msg->edge, false);
+            break;
+        }
+      } break;
 
-  case knowledge_graph_msgs::msg::GraphUpdate::GRAPH: {
-    switch (operation) {
-    case knowledge_graph_msgs::msg::GraphUpdate::SYNC:
+    case knowledge_graph_msgs::msg::GraphUpdate::GRAPH: {
+        switch (operation) {
+          case knowledge_graph_msgs::msg::GraphUpdate::SYNC:
 
-      if (msg->target_node == this->graph_id) {
-        this->reqsync_timer->cancel();
-        this->update_graph(msg->graph);
-      }
-      break;
+            if (msg->target_node == this->graph_id) {
+              this->reqsync_timer->cancel();
+              this->update_graph(msg->graph);
+            }
+            break;
 
-    case knowledge_graph_msgs::msg::GraphUpdate::REQSYNC:
-      if (msg->node_id != this->graph_id) {
-        knowledge_graph_msgs::msg::GraphUpdate out_msg;
-        out_msg.stamp = this->provided_node->get_clock()->now();
-        out_msg.node_id = this->graph_id;
-        out_msg.target_node = msg->node_id;
-        out_msg.operation_type = knowledge_graph_msgs::msg::GraphUpdate::SYNC;
-        out_msg.element_type = knowledge_graph_msgs::msg::GraphUpdate::GRAPH;
-        out_msg.graph = *this->graph;
-        this->update_pub->publish(out_msg);
+          case knowledge_graph_msgs::msg::GraphUpdate::REQSYNC:
+            if (msg->node_id != this->graph_id) {
+              knowledge_graph_msgs::msg::GraphUpdate out_msg;
+              out_msg.stamp = this->provided_node->get_clock()->now();
+              out_msg.node_id = this->graph_id;
+              out_msg.target_node = msg->node_id;
+              out_msg.operation_type = knowledge_graph_msgs::msg::GraphUpdate::SYNC;
+              out_msg.element_type = knowledge_graph_msgs::msg::GraphUpdate::GRAPH;
+              out_msg.graph = *this->graph;
+              this->update_pub->publish(out_msg);
 
-        this->update_graph(msg->graph);
-      }
-      break;
-    }
-  } break;
+              this->update_graph(msg->graph);
+            }
+            break;
+        }
+      } break;
   }
 }
 

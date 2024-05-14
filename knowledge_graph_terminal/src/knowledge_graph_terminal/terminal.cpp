@@ -134,7 +134,7 @@ Terminal::Terminal()
 
 void Terminal::run_console() {
   this->graph_ =
-      knowledge_graph::KnowledgeGraph::get_instance(shared_from_this());
+      std::make_shared<knowledge_graph::KnowledgeGraph>(shared_from_this());
   std::string line;
   bool success = true;
 

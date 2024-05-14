@@ -39,15 +39,13 @@ public:
   explicit KnowledgeGraph(
       rclcpp_lifecycle::LifecycleNode::SharedPtr provided_node)
       : KnowledgeGraph((rclcpp::Node *)provided_node.get()) {}
-  ~KnowledgeGraph() {}
+  ~KnowledgeGraph() {
+    update_sub.reset();
+    update_pub.reset();
+  }
 
   KnowledgeGraph(KnowledgeGraph &other) = delete;
   void operator=(const KnowledgeGraph &) = delete;
-
-  static std::shared_ptr<KnowledgeGraph>
-  get_instance(rclcpp::Node::SharedPtr provided_node);
-  static std::shared_ptr<KnowledgeGraph>
-  get_instance(rclcpp_lifecycle::LifecycleNode::SharedPtr provided_node);
 
   bool remove_node(const std::string node, bool sync = true);
   bool exist_node(const std::string node);
@@ -93,9 +91,6 @@ protected:
   void reqsync_timer_callback();
 
 private:
-  static std::shared_ptr<KnowledgeGraph> pinstance;
-  static std::mutex mutex;
-
   rclcpp::Publisher<knowledge_graph_msgs::msg::GraphUpdate>::SharedPtr
       update_pub;
   rclcpp::Subscription<knowledge_graph_msgs::msg::GraphUpdate>::SharedPtr
@@ -106,26 +101,6 @@ private:
 };
 
 // singleton
-std::shared_ptr<KnowledgeGraph> KnowledgeGraph::pinstance{nullptr};
-std::mutex KnowledgeGraph::mutex;
-
-std::shared_ptr<KnowledgeGraph>
-KnowledgeGraph::get_instance(rclcpp::Node::SharedPtr provided_node) {
-  std::lock_guard<std::mutex> lock(mutex);
-  if (pinstance == nullptr) {
-    pinstance = std::make_shared<KnowledgeGraph>(provided_node);
-  }
-  return pinstance;
-}
-
-std::shared_ptr<KnowledgeGraph> KnowledgeGraph::get_instance(
-    rclcpp_lifecycle::LifecycleNode::SharedPtr provided_node) {
-  std::lock_guard<std::mutex> lock(mutex);
-  if (pinstance == nullptr) {
-    pinstance = std::make_shared<KnowledgeGraph>(provided_node);
-  }
-  return pinstance;
-}
 
 } // namespace knowledge_graph
 
