@@ -6,28 +6,28 @@ ROS 2 knowledge graph provides you a way to share a graph between nodes running 
 
 <div align="center">
 
-[![License: Apache-2](https://img.shields.io/badge/GitHub-GPL--3.0-informational)](https://opensource.org/license/apache-2)
+[![License: Apache-2](https://img.shields.io/badge/GitHub-Apache-2)](https://opensource.org/license/apache-2)
 [![GitHub release](https://img.shields.io/github/release/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/releases)
-[![Code Size](https://img.shields.io/github/languages/code-size/mgonzs13/knowledge_graph.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph?branch=main)
-[![Dependencies](https://img.shields.io/librariesio/github/mgonzs13/knowledge_graph?branch=main)](https://libraries.io/github/mgonzs13/knowledge_graph?branch=main)
-[![Last Commit](https://img.shields.io/github/last-commit/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/commits/main)
+[![Code Size](https://img.shields.io/github/languages/code-size/mgonzs13/knowledge_graph.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph?branch=master)
+[![Dependencies](https://img.shields.io/librariesio/github/mgonzs13/knowledge_graph?branch=master)](https://libraries.io/github/mgonzs13/knowledge_graph?branch=master)
+[![Last Commit](https://img.shields.io/github/last-commit/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/commits/master)
 
 [![GitHub issues](https://img.shields.io/github/issues/mgonzs13/knowledge_graph)](https://github.com/mgonzs13/knowledge_graph/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/mgonzs13/knowledge_graph)](https://github.com/mgonzs13/knowledge_graph/pulls)
 [![Contributors](https://img.shields.io/github/contributors/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/graphs/contributors)
 
-[![Python Formatter Check](https://github.com/mgonzs13/knowledge_graph/actions/workflows/python-formatter.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/python-formatter.yml?branch=main)
-[![C++ Formatter Check](https://github.com/mgonzs13/knowledge_graph/actions/workflows/cpp-formatter.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/cpp-formatter.yml?branch=main) [![Documentation Deployment](https://github.com/mgonzs13/knowledge_graph/actions/workflows/documentation-deployment.yml/badge.svg)](https://uleroboticsgroup.github.io/yasmin)
+[![Python Formatter Check](https://github.com/mgonzs13/knowledge_graph/actions/workflows/python-formatter.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/python-formatter.yml?branch=master)
+[![C++ Formatter Check](https://github.com/mgonzs13/knowledge_graph/actions/workflows/cpp-formatter.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/cpp-formatter.yml?branch=master)
 
-| ROS 2 Distro |                                                                                                             Build and Test                                                                                                             |
-| :----------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|   **Foxy**   |        [![Foxy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/foxy-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/foxy-build-test.yml?branch=main)         |
-| **Galatic**  |  [![Galactic Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/galactic-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/galactic-build-test.yml?branch=main)   |
-|  **Humble**  | [![Humble Build and Test](https://github.com/mgonzs13/knowledge_graph/actions/workflows/humble-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/humble-build-test.yml?branch=main) |
-|   **Iron**   |        [![Iron Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml?branch=main)         |
-|  **Jazzy**   |       [![Jazzy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml?branch=main)       |
-|  **Kilted**  |     [![Kilted Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml?branch=main)      |
-| **Rolling**  |    [![Rolling Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml?branch=main)    |
+| ROS 2 Distro |                                                                                                               Build and Test                                                                                                               |
+| :----------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|   **Foxy**   |        [![Foxy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/foxy-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/foxy-build-test.yml?branch=master)         |
+| **Galatic**  |  [![Galactic Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/galactic-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/galactic-build-test.yml?branch=master)   |
+|  **Humble**  | [![Humble Build and Test](https://github.com/mgonzs13/knowledge_graph/actions/workflows/humble-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/humble-build-test.yml?branch=master) |
+|   **Iron**   |        [![Iron Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml?branch=master)         |
+|  **Jazzy**   |       [![Jazzy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml?branch=master)       |
+|  **Kilted**  |     [![Kilted Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml?branch=master)      |
+| **Rolling**  |    [![Rolling Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml?branch=master)    |
 
 </div>
 
@@ -70,7 +70,7 @@ private:
 };
 
 
-int main(int argc, char ** argv) {
+int master(int argc, char ** argv) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<NodeA>();
   rclcpp::spin(node);
@@ -93,22 +93,22 @@ class NodeA(Node):
     graph = KnowledgeGraph.get_instance(self)
 
 
-def main():
+def master():
   rclpy.init()
   node = NodeA()
   rclpy.spin(node)
   rclpy.shutdown()
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__master__":
+    master()
 ```
 
 ## API
 
 ### C++
 
-The complete C++ API of `knowledge_graph::KnowledgeGraph` is at [knowledge_graph/include/knowledge_graph/knowledge_graph.hpp](knowledge_graph/include/knowledge_graph/knowledge_graph.hpp), but it is mainly:
+The complete C++ API of `knowledge_graph::KnowledgeGraph` is at [knowledge_graph/include/knowledge_graph/knowledge_graph.hpp](knowledge_graph/include/knowledge_graph/knowledge_graph.hpp), but it is masterly:
 
 - Nodes
 
@@ -160,7 +160,7 @@ std::vector<knowledge_graph_msgs::msg::Edge> get_in_edges(const std::string &tar
 
 ### Python
 
-The complete Ptyhon API of `KnowledgeGraph` is at [knowledge_graph/knowledge_graph/knowledge_graph.py](knowledge_graph/knowledge_graph/knowledge_graph.py), but it is mainly:
+The complete Ptyhon API of `KnowledgeGraph` is at [knowledge_graph/knowledge_graph/knowledge_graph.py](knowledge_graph/knowledge_graph/knowledge_graph.py), but it is masterly:
 
 - Nodes
 
