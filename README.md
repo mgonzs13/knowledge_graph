@@ -4,12 +4,38 @@ Many times, when you are developing a Software Architecture for robots, you need
 
 ROS 2 knowledge graph provides you a way to share a graph between nodes running in an application. The graph is distributed in all the ROS 2 nodes. Each node contains a replica that is synchronized with all the other replicas, guaranteeing a Strong Eventual Consistency.
 
+<div align="center">
+
+[![License: Apache-2](https://img.shields.io/badge/GitHub-GPL--3.0-informational)](https://opensource.org/license/apache-2)
+[![GitHub release](https://img.shields.io/github/release/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/releases)
+[![Code Size](https://img.shields.io/github/languages/code-size/mgonzs13/knowledge_graph.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph?branch=main)
+[![Dependencies](https://img.shields.io/librariesio/github/mgonzs13/knowledge_graph?branch=main)](https://libraries.io/github/mgonzs13/knowledge_graph?branch=main)
+[![Last Commit](https://img.shields.io/github/last-commit/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/commits/main)
+
+[![GitHub issues](https://img.shields.io/github/issues/mgonzs13/knowledge_graph)](https://github.com/mgonzs13/knowledge_graph/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/mgonzs13/knowledge_graph)](https://github.com/mgonzs13/knowledge_graph/pulls)
+[![Contributors](https://img.shields.io/github/contributors/mgonzs13/knowledge_graph.svg)](https://github.com/mgonzs13/knowledge_graph/graphs/contributors)
+
+[![Python Formatter Check](https://github.com/mgonzs13/knowledge_graph/actions/workflows/python-formatter.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/python-formatter.yml?branch=main)
+[![C++ Formatter Check](https://github.com/mgonzs13/knowledge_graph/actions/workflows/cpp-formatter.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/cpp-formatter.yml?branch=main) [![Documentation Deployment](https://github.com/mgonzs13/knowledge_graph/actions/workflows/documentation-deployment.yml/badge.svg)](https://uleroboticsgroup.github.io/yasmin)
+
+| ROS 2 Distro |                                                                                                             Build and Test                                                                                                             |
+| :----------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|   **Foxy**   |        [![Foxy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/foxy-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/foxy-build-test.yml?branch=main)         |
+| **Galatic**  |  [![Galactic Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/galactic-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/galactic-build-test.yml?branch=main)   |
+|  **Humble**  | [![Humble Build and Test](https://github.com/mgonzs13/knowledge_graph/actions/workflows/humble-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/humble-build-test.yml?branch=main) |
+|   **Iron**   |        [![Iron Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml?branch=main)         |
+|  **Jazzy**   |       [![Jazzy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml?branch=main)       |
+|  **Kilted**  |     [![Kilted Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml?branch=main)      |
+| **Rolling**  |    [![Rolling Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml/badge.svg?branch=main)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml?branch=main)    |
+
+</div>
+
 ## Installation
 
 ```shell
 cd ~/ros2_ws/src
 git clone https://github.com/mgonzs13/knowledge_graph.git
-pip3 install -r knowledge_graph/requirements.txt
 cd ~/ros2_ws
 rosdep install --from-paths src --ignore-src -r -y
 colcon build
