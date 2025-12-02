@@ -45,8 +45,7 @@ class InteractiveGraphicsView(QGraphicsView):
 
     def mousePressEvent(self, mouse_event):
         self._last_pan_point = mouse_event.pos()
-        self._last_scene_center = self._map_to_scene_f(
-            QRectF(self.frameRect()).center())
+        self._last_scene_center = self._map_to_scene_f(QRectF(self.frameRect()).center())
         self.setCursor(Qt.ClosedHandCursor)
 
     def mouseReleaseEvent(self, mouse_event):
@@ -55,8 +54,9 @@ class InteractiveGraphicsView(QGraphicsView):
 
     def mouseMoveEvent(self, mouse_event):
         if self._last_pan_point is not None:
-            delta_scene = self.mapToScene(
-                mouse_event.pos()) - self.mapToScene(self._last_pan_point)
+            delta_scene = self.mapToScene(mouse_event.pos()) - self.mapToScene(
+                self._last_pan_point
+            )
             if not delta_scene.isNull():
                 self.centerOn(self._last_scene_center - delta_scene)
                 self._last_scene_center -= delta_scene
@@ -79,7 +79,8 @@ class InteractiveGraphicsView(QGraphicsView):
             mouse_after_scale_in_scene = self.mapToScene(wheel_event.pos())
             center_in_scene = self.mapToScene(self.frameRect().center())
             self.centerOn(
-                center_in_scene + mouse_before_scale_in_scene - mouse_after_scale_in_scene)
+                center_in_scene + mouse_before_scale_in_scene - mouse_after_scale_in_scene
+            )
 
             wheel_event.accept()
         else:

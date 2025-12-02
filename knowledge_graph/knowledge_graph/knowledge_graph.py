@@ -50,27 +50,38 @@ class KnowledgeGraph:
         self.graph_id = self.node.get_name()
 
         self.update_pub = self.node.create_publisher(
-            GraphUpdate, "graph_update", QoSProfile(
+            GraphUpdate,
+            "graph_update",
+            QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=100,
-                reliability=QoSReliabilityPolicy.RELIABLE
-            ))
+                reliability=QoSReliabilityPolicy.RELIABLE,
+            ),
+        )
         self.update_sub = self.node.create_subscription(
-            GraphUpdate, "graph_update", self.update_callback, QoSProfile(
+            GraphUpdate,
+            "graph_update",
+            self.update_callback,
+            QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=100,
-                reliability=QoSReliabilityPolicy.RELIABLE
-            ))
+                reliability=QoSReliabilityPolicy.RELIABLE,
+            ),
+        )
 
         self.last_ts = self.node.get_clock().now()
         self.start_time = self.node.get_clock().now()
 
-        self.reqsync_timer = self.node.create_timer(
-            0.1, self.reqsync_timer_callback)
+        self.reqsync_timer = self.node.create_timer(0.1, self.reqsync_timer_callback)
         self.reqsync_timer_callback()
 
     def reqsync_timer_callback(self) -> None:
-        if Time(nanoseconds=(self.node.get_clock().now() - self.start_time).nanoseconds).seconds_nanoseconds()[0] > 1.0:
+        if (
+            Time(
+                nanoseconds=(self.node.get_clock().now() - self.start_time).nanoseconds
+            ).seconds_nanoseconds()[0]
+            > 1.0
+        ):
             self.reqsync_timer.cancel()
 
         hello_msg = GraphUpdate()
@@ -82,9 +93,12 @@ class KnowledgeGraph:
 
         self.update_pub.publish(hello_msg)
 
-    def publish_update(self, operation_type: int,
-                       element: Union[NodeMsg, EdgeMsg, GraphMsg],
-                       target_node: str = "") -> None:
+    def publish_update(
+        self,
+        operation_type: int,
+        element: Union[NodeMsg, EdgeMsg, GraphMsg],
+        target_node: str = "",
+    ) -> None:
 
         update_msg = GraphUpdate()
 
@@ -147,9 +161,11 @@ class KnowledgeGraph:
         removed = False
 
         for e in self.graph.edges:
-            if (e.source_node == edge.source_node and
-                e.target_node == edge.target_node and
-                    e.edge_class == edge.edge_class):
+            if (
+                e.source_node == edge.source_node
+                and e.target_node == edge.target_node
+                and e.edge_class == edge.edge_class
+            ):
 
                 self.graph.edges.remove(e)
                 removed = True
@@ -166,10 +182,9 @@ class KnowledgeGraph:
     def get_nodes(self) -> List[NodeMsg]:
         return self.graph.nodes
 
-    def get_edges(self,
-                  source: str = None,
-                  target: str = None,
-                  edge_class: str = None) -> List[EdgeMsg]:
+    def get_edges(
+        self, source: str = None, target: str = None, edge_class: str = None
+    ) -> List[EdgeMsg]:
 
         if (source is None or target is None) and edge_class is None:
             return self.graph.edges
@@ -233,19 +248,23 @@ class KnowledgeGraph:
     def update_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
         if not self.exist_node(edge.source_node):
             self.node.get_logger().error(
-                f"Node source [{edge.source_node}] doesn't exist adding edge")
+                f"Node source [{edge.source_node}] doesn't exist adding edge"
+            )
             return False
 
         if not self.exist_node(edge.target_node):
             self.node.get_logger().error(
-                f"Node source [{edge.target_node}] doesn't exist adding edge")
+                f"Node source [{edge.target_node}] doesn't exist adding edge"
+            )
             return False
 
         found = False
         for idx, e in enumerate(self.graph.edges):
-            if (e.source_node == edge.source_node and
-                e.target_node == edge.target_node and
-                    e.edge_class == edge.edge_class):
+            if (
+                e.source_node == edge.source_node
+                and e.target_node == edge.target_node
+                and e.edge_class == edge.edge_class
+            ):
 
                 self.graph.edges[idx] = edge
                 found = True
@@ -278,10 +297,14 @@ class KnowledgeGraph:
         if author_id == self.graph_id:
             return
 
-        if (ts < self.last_ts and
-                operation != GraphUpdate.REQSYNC and operation != GraphUpdate.SYNC):
+        if (
+            ts < self.last_ts
+            and operation != GraphUpdate.REQSYNC
+            and operation != GraphUpdate.SYNC
+        ):
             self.node.get_logger().error(
-                f"UNORDERER UPDATE [{operation}] {self.last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}")
+                f"UNORDERER UPDATE [{operation}] {self.last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
+            )
 
         if element == GraphUpdate.NODE:
             if author_id == self.graph_id:
@@ -311,6 +334,5 @@ class KnowledgeGraph:
 
             elif operation == GraphUpdate.REQSYNC:
                 if msg.node_id != self.graph_id:
-                    self.publish_update(
-                        GraphUpdate.SYNC, self.graph, msg.node_id)
+                    self.publish_update(GraphUpdate.SYNC, self.graph, msg.node_id)
                     self.update_gaph(msg.graph)

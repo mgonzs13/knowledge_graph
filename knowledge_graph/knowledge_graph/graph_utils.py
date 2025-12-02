@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from typing import Any
-from typing import List
 from typing import Union
 from knowledge_graph_msgs.msg import Node
 from knowledge_graph_msgs.msg import Edge
@@ -109,13 +108,13 @@ def add_property(element: Union[Node, Edge], key: str, content: Any) -> bool:
     found = False
     newc = new_content(content)
 
-    if (newc.type == Content.ERROR):
+    if newc.type == Content.ERROR:
         # "Adding a property of type ERROR"
         return False
 
     p: Property
     for p in element.properties:
-        if (p.key == key):
+        if p.key == key:
             found = True
             p.value = newc
             break

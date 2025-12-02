@@ -45,9 +45,11 @@ from python_qt_binding.QtSvg import QSvgGenerator
 
 from PyQt5 import QtCore
 from qt_dotgraph.dot_to_qt import DotToQtGenerator
+
 # pydot requires some hacks
 from qt_dotgraph.pydotfactory import PydotFactory
 from rqt_gui_py.plugin import Plugin
+
 # TODO: use pygraphviz instead, but non-deterministic layout will first be resolved in graphviz 2.30
 # from qtgui_plugin.pygraphvizfactory import PygraphvizFactory
 
@@ -68,7 +70,8 @@ class KnowledgeGraphPlugin(Plugin):
 
         self._node = context.node
         self._logger = self._node.get_logger().get_child(
-            "knowledge_graph_viewer.knowledge_graph.KnowledgeGraphPlugin")
+            "knowledge_graph_viewer.knowledge_graph.KnowledgeGraphPlugin"
+        )
         self.setObjectName("KnowledgeGraphPlugin")
 
         self._knowledge_graph = KnowledgeGraphImpl()
@@ -82,29 +85,32 @@ class KnowledgeGraphPlugin(Plugin):
 
         _, package_path = get_resource("packages", "knowledge_graph_viewer")
         ui_file = os.path.join(
-            package_path, "share", "knowledge_graph_viewer", "resource", "KnowledgeGraphPlugin.ui")
-        loadUi(ui_file, self._widget, {
-               "InteractiveGraphicsView": InteractiveGraphicsView})
+            package_path,
+            "share",
+            "knowledge_graph_viewer",
+            "resource",
+            "KnowledgeGraphPlugin.ui",
+        )
+        loadUi(
+            ui_file, self._widget, {"InteractiveGraphicsView": InteractiveGraphicsView}
+        )
         self._widget.setObjectName("KnowledgeGraphUi")
         if context.serial_number() > 1:
             self._widget.setWindowTitle(
-                self._widget.windowTitle() + (" (%d)" % context.serial_number()))
+                self._widget.windowTitle() + (" (%d)" % context.serial_number())
+            )
 
         self._scene = QGraphicsScene()
         self._scene.setBackgroundBrush(Qt.white)
         self._widget.graphics_view.setScene(self._scene)
 
-        self._widget.save_as_svg_push_button.setIcon(
-            QIcon.fromTheme("document-save-as"))
+        self._widget.save_as_svg_push_button.setIcon(QIcon.fromTheme("document-save-as"))
         self._widget.save_as_svg_push_button.pressed.connect(self._save_svg)
-        self._widget.save_as_image_push_button.setIcon(
-            QIcon.fromTheme("image"))
-        self._widget.save_as_image_push_button.pressed.connect(
-            self._save_image)
+        self._widget.save_as_image_push_button.setIcon(QIcon.fromTheme("image"))
+        self._widget.save_as_image_push_button.pressed.connect(self._save_image)
 
         self._update_knowledge_graph()
-        self._deferred_fit_in_view.connect(
-            self._fit_in_view, Qt.QueuedConnection)
+        self._deferred_fit_in_view.connect(self._fit_in_view, Qt.QueuedConnection)
         self._deferred_fit_in_view.emit()
 
         context.add_widget(self._widget)
@@ -133,7 +139,8 @@ class KnowledgeGraphPlugin(Plugin):
     def _generate_dotcode(self):
         return self.dotcode_generator.generate_dotcode(
             knowledge_graphinst=self._knowledge_graph,
-            dotcode_factory=self.dotcode_factory)
+            dotcode_factory=self.dotcode_factory,
+        )
 
     def _update_graph_view(self, dotcode):
         if dotcode == self._current_dotcode:
@@ -145,22 +152,28 @@ class KnowledgeGraphPlugin(Plugin):
         self._scene.clear()
 
         # layout graph and create qt items
-        (nodes, edges) = self.dot_to_qt.dotcode_to_qt_items(self._current_dotcode,
-                                                            highlight_level=3,
-                                                            same_label_siblings=True,
-                                                            scene=self._scene)
+        (nodes, edges) = self.dot_to_qt.dotcode_to_qt_items(
+            self._current_dotcode,
+            highlight_level=3,
+            same_label_siblings=True,
+            scene=self._scene,
+        )
 
         self._scene.setSceneRect(self._scene.itemsBoundingRect())
         self._fit_in_view()
 
     def _fit_in_view(self):
         self._widget.graphics_view.fitInView(
-            self._scene.itemsBoundingRect(), Qt.KeepAspectRatio)
+            self._scene.itemsBoundingRect(), Qt.KeepAspectRatio
+        )
 
     def _save_svg(self):
         file_name, _ = QFileDialog.getSaveFileName(
-            self._widget, self.tr("Save as SVG"), "rosgraph.svg",
-            self.tr("Scalable Vector Graphic (*.svg)"))
+            self._widget,
+            self.tr("Save as SVG"),
+            "rosgraph.svg",
+            self.tr("Scalable Vector Graphic (*.svg)"),
+        )
         if file_name is None or file_name == "":
             return
 
@@ -175,13 +188,18 @@ class KnowledgeGraphPlugin(Plugin):
 
     def _save_image(self):
         file_name, _ = QFileDialog.getSaveFileName(
-            self._widget, self.tr("Save as image"), "rosgraph.png",
-            self.tr("Image (*.bmp *.jpg *.png *.tiff)"))
+            self._widget,
+            self.tr("Save as image"),
+            "rosgraph.png",
+            self.tr("Image (*.bmp *.jpg *.png *.tiff)"),
+        )
         if file_name is None or file_name == "":
             return
 
-        img = QImage((self._scene.sceneRect().size() * 2.0)
-                     .toSize(), QImage.Format_ARGB32_Premultiplied)
+        img = QImage(
+            (self._scene.sceneRect().size() * 2.0).toSize(),
+            QImage.Format_ARGB32_Premultiplied,
+        )
         painter = QPainter(img)
         painter.setRenderHint(QPainter.Antialiasing)
         self._scene.render(painter)

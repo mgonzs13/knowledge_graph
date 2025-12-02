@@ -36,8 +36,7 @@ class KnowledgeGraphDbNode(Node):
         super().__init__("knowledge_graph_db")
 
         self.declare_parameter("db_file", "knowledge_graph.db")
-        db_file = self.get_parameter(
-            "db_file").get_parameter_value().string_value
+        db_file = self.get_parameter("db_file").get_parameter_value().string_value
 
         self.graph = KnowledgeGraph.get_instance(self)
 
@@ -151,12 +150,13 @@ class KnowledgeGraphDbNode(Node):
         properties_str = "{"
 
         for idx, p in enumerate(properties):
-            properties_str += f"\"{p.key}\": "
+            properties_str += f'"{p.key}": '
             content = p.value
 
             if content.type == Content.BOOL:
-                properties_str += str(content.bool_value).replace("T",
-                                                                  "t").replace("F", "f")
+                properties_str += (
+                    str(content.bool_value).replace("T", "t").replace("F", "f")
+                )
             elif content.type == Content.INT:
                 properties_str += str(content.int_value)
             elif content.type == Content.FLOAT:
@@ -164,10 +164,11 @@ class KnowledgeGraphDbNode(Node):
             elif content.type == Content.DOUBLE:
                 properties_str += str(content.double_value)
             elif content.type == Content.STRING:
-                properties_str += "\"" + content.string_value + "\""
+                properties_str += '"' + content.string_value + '"'
             elif content.type == Content.VBOOL:
-                properties_str += str(content.bool_value).replace("T",
-                                                                  "t").replace("F", "f")
+                properties_str += (
+                    str(content.bool_value).replace("T", "t").replace("F", "f")
+                )
             elif content.type == Content.VINT:
                 properties_str += str(content.int_vector)
             elif content.type == Content.VFLOAT:
@@ -175,7 +176,7 @@ class KnowledgeGraphDbNode(Node):
             elif content.type == Content.VDOUBLE:
                 properties_str += str(content.double_vector)
             elif content.type == Content.VSTRING:
-                properties_str += str(content.string_vector).replace("'", "\"")
+                properties_str += str(content.string_vector).replace("'", '"')
 
             if idx < len(properties) - 1:
                 properties_str += ","
@@ -189,8 +190,7 @@ class KnowledgeGraphDbNode(Node):
     #
     def exist_sql_node(self, node: NodeMsg) -> bool:
         c = self.sqlite_conn.cursor()
-        c.execute("SELECT count(*) FROM nodes WHERE node_name = ?;",
-                  (node.node_name,))
+        c.execute("SELECT count(*) FROM nodes WHERE node_name = ?;", (node.node_name,))
         data = c.fetchone()[0]
         return data != 0
 
@@ -225,13 +225,24 @@ class KnowledgeGraphDbNode(Node):
     #
     def exist_sql_edge(self, edge: EdgeMsg) -> bool:
         c = self.sqlite_conn.cursor()
-        c.execute("SELECT count(*) FROM edges WHERE edge_class = ? AND source_node = ? AND target_node = ?;",
-                  (edge.edge_class, edge.source_node, edge.target_node,))
+        c.execute(
+            "SELECT count(*) FROM edges WHERE edge_class = ? AND source_node = ? AND target_node = ?;",
+            (
+                edge.edge_class,
+                edge.source_node,
+                edge.target_node,
+            ),
+        )
         data = c.fetchone()[0]
         return data != 0
 
     def parse_edge(self, edge: EdgeMsg) -> List[str]:
-        return (edge.edge_class, edge.source_node, edge.target_node, self.parse_properties(edge.properties))
+        return (
+            edge.edge_class,
+            edge.source_node,
+            edge.target_node,
+            self.parse_properties(edge.properties),
+        )
 
     def insert_sql_edge(self, edge: EdgeMsg) -> None:
         sql = """INSERT INTO edges(edge_class, source_node, target_node, properties)
@@ -248,8 +259,10 @@ class KnowledgeGraphDbNode(Node):
                   properties = ?
               WHERE edge_class = ? AND source_node = ? AND target_node = ?;"""
         c = self.sqlite_conn.cursor()
-        c.execute(sql, self.parse_edge(edge) +
-                  (edge.edge_class, edge.source_node, edge.target_node))
+        c.execute(
+            sql,
+            self.parse_edge(edge) + (edge.edge_class, edge.source_node, edge.target_node),
+        )
         self.sqlite_conn.commit()
 
     def remove_sql_edge(self, edge: EdgeMsg) -> None:

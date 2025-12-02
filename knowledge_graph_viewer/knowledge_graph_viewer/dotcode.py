@@ -38,17 +38,18 @@ class KnowledgeGraphDotcodeGenerator:
         pass
 
     def generate_dotgraph(
-            self,
-            knowledge_graphinst,
-            dotcode_factory,
-            orientation="LR",
-            rank="same",  # None, same, min, max, source, sink
-            ranksep=0.2,  # vertical distance between layers
-            # direction of layout (TB top > bottom, LR left > right)
-            rankdir="TB",
-            simplify=True,  # remove double edges
-            quiet=False,
-            unreachable=False):
+        self,
+        knowledge_graphinst,
+        dotcode_factory,
+        orientation="LR",
+        rank="same",  # None, same, min, max, source, sink
+        ranksep=0.2,  # vertical distance between layers
+        # direction of layout (TB top > bottom, LR left > right)
+        rankdir="TB",
+        simplify=True,  # remove double edges
+        quiet=False,
+        unreachable=False,
+    ):
         """
         See generate_dotcode
         """
@@ -57,10 +58,8 @@ class KnowledgeGraphDotcodeGenerator:
         # result = "digraph G {\n
         # rankdir=%(orientation)s;\n%(nodes_str)s\n%(edges_str)s}\n" % vars()
         dotgraph = dotcode_factory.get_graph(
-            rank=rank,
-            ranksep=ranksep,
-            simplify=simplify,
-            rankdir=orientation)
+            rank=rank, ranksep=ranksep, simplify=simplify, rankdir=orientation
+        )
 
         for node in knowledge_graphinst.graph.get_nodes():
             dotcode_factory.add_node_to_graph(
@@ -68,7 +67,8 @@ class KnowledgeGraphDotcodeGenerator:
                 nodename=node.node_name,
                 nodelabel=node.node_name,
                 shape="ellipse",
-                url=node.node_name)
+                url=node.node_name,
+            )
 
         for edge in knowledge_graphinst.graph.get_edges():
             label = edge.edge_class
@@ -78,25 +78,26 @@ class KnowledgeGraphDotcodeGenerator:
                 edge.source_node,
                 edge.target_node,
                 label=label,
-                url="%s %s %s ".format(
-                    edge.source_node, edge.target_node, label),
+                url="%s %s %s ".format(edge.source_node, edge.target_node, label),
                 penwidth=1,
-                color=[0, 0, 0])
+                color=[0, 0, 0],
+            )
 
         return dotgraph
 
     def generate_dotcode(
-            self,
-            knowledge_graphinst,
-            dotcode_factory,
-            orientation="LR",
-            rank="same",  # None, same, min, max, source, sink
-            ranksep=0.2,  # vertical distance between layers
-            # direction of layout (TB top > bottom, LR left > right)
-            rankdir="TB",
-            simplify=False,  # remove double edges
-            quiet=False,
-            unreachable=False):
+        self,
+        knowledge_graphinst,
+        dotcode_factory,
+        orientation="LR",
+        rank="same",  # None, same, min, max, source, sink
+        ranksep=0.2,  # vertical distance between layers
+        # direction of layout (TB top > bottom, LR left > right)
+        rankdir="TB",
+        simplify=False,  # remove double edges
+        quiet=False,
+        unreachable=False,
+    ):
         """
         @param knowledge_graphinst: KnowledgeGraph instance
         @param ns_filter: nodename filter
@@ -125,6 +126,7 @@ class KnowledgeGraphDotcodeGenerator:
             rankdir=rankdir,
             simplify=simplify,
             quiet=quiet,
-            unreachable=unreachable)
+            unreachable=unreachable,
+        )
         dotcode = dotcode_factory.create_dot(dotgraph)
         return dotcode

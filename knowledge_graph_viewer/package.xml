@@ -13,7 +13,7 @@
   <exec_depend>rqt_gui</exec_depend>
   <exec_depend>rqt_gui_py</exec_depend>
   <exec_depend>knowledge_graph_msgs</exec_depend>
-  
+
   <export>
     <build_type>ament_python</build_type>
     <rqt_gui plugin="${prefix}/plugin.xml"/>
