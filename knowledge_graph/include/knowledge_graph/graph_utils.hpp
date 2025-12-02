@@ -31,8 +31,6 @@
 
 namespace knowledge_graph {
 
-namespace detail {
-
 /**
  * @brief Helper function to convert a vector to string representation.
  * @tparam T The type of elements in the vector.
@@ -55,8 +53,6 @@ inline std::string vector_to_string(const std::vector<T> &vec,
   oss << "]";
   return oss.str();
 }
-
-} // namespace detail
 
 /**
  * @brief Creates a new graph node.
@@ -607,20 +603,20 @@ to_string(const knowledge_graph_msgs::msg::Content &content) {
   case knowledge_graph_msgs::msg::Content::STRING:
     return content.string_value;
   case knowledge_graph_msgs::msg::Content::VBOOL:
-    return detail::vector_to_string(
-        content.bool_vector, [](bool v) { return v ? "true" : "false"; });
+    return vector_to_string(content.bool_vector,
+                            [](bool v) { return v ? "true" : "false"; });
   case knowledge_graph_msgs::msg::Content::VINT:
-    return detail::vector_to_string(content.int_vector,
-                                    [](int v) { return std::to_string(v); });
+    return vector_to_string(content.int_vector,
+                            [](int v) { return std::to_string(v); });
   case knowledge_graph_msgs::msg::Content::VFLOAT:
-    return detail::vector_to_string(content.float_vector,
-                                    [](float v) { return std::to_string(v); });
+    return vector_to_string(content.float_vector,
+                            [](float v) { return std::to_string(v); });
   case knowledge_graph_msgs::msg::Content::VDOUBLE:
-    return detail::vector_to_string(content.double_vector,
-                                    [](double v) { return std::to_string(v); });
+    return vector_to_string(content.double_vector,
+                            [](double v) { return std::to_string(v); });
   case knowledge_graph_msgs::msg::Content::VSTRING:
-    return detail::vector_to_string(content.string_vector,
-                                    [](const std::string &v) { return v; });
+    return vector_to_string(content.string_vector,
+                            [](const std::string &v) { return v; });
   default:
     return "error";
   }
