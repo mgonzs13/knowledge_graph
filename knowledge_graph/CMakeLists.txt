@@ -63,8 +63,8 @@ if(BUILD_TESTING)
   )
 
   # Python tests
-  ament_add_pytest_test(test_graph_utils_py test/test_graph_utils.py)
-  ament_add_pytest_test(test_knowledge_graph_py test/test_knowledge_graph.py)
+  ament_add_pytest_test(graph_utils_test_py test/graph_utils_test.py)
+  ament_add_pytest_test(knowledge_graph_test_py test/knowledge_graph_test.py)
 endif()
 
 ament_package()
