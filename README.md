@@ -215,7 +215,7 @@ ros2 run knowledge_graph_terminal knowledge_graph_terminal
 ```
 
 ```shell
-rqt
+ros2 run knowledge_graph_viewer rqt_knowledge_graph
 ```
 
 ![](./docs/demo_terminal_viewer.gif)

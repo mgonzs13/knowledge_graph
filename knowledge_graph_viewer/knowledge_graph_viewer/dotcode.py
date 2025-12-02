@@ -80,7 +80,6 @@ class KnowledgeGraphDotcodeGenerator:
                 label=label,
                 url="%s %s %s ".format(edge.source_node, edge.target_node, label),
                 penwidth=1,
-                color=[0, 0, 0],
             )
 
         return dotgraph
