@@ -122,7 +122,13 @@ public:
    * @return An optional containing the node if found, empty otherwise.
    */
   std::optional<knowledge_graph_msgs::msg::Node>
-  get_node(const std::string &node);
+  get_node(const std::string &node) const;
+
+  /**
+   * @brief Gets the names of all nodes in the graph.
+   * @return Vector of node names.
+   */
+  const std::vector<std::string> get_node_names() const;
 
   /**
    * @brief Removes an edge from the graph.
@@ -140,7 +146,7 @@ public:
    * @return Vector of edges connecting the source and target nodes.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_edges(const std::string &source, const std::string &target);
+  get_edges(const std::string &source, const std::string &target) const;
 
   /**
    * @brief Gets all edges of a specific class.
@@ -148,7 +154,7 @@ public:
    * @return Vector of edges matching the specified class.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_edges(const std::string &edge_class);
+  get_edges(const std::string &edge_class) const;
 
   /**
    * @brief Gets all outgoing edges from a node.
@@ -156,7 +162,7 @@ public:
    * @return Vector of edges originating from the source node.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_out_edges(const std::string &source);
+  get_out_edges(const std::string &source) const;
 
   /**
    * @brief Gets all incoming edges to a node.
@@ -164,7 +170,7 @@ public:
    * @return Vector of edges pointing to the target node.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_in_edges(const std::string &target);
+  get_in_edges(const std::string &target) const;
 
   /**
    * @brief Gets all nodes in the graph.
@@ -177,12 +183,6 @@ public:
    * @return Vector copy of all edges (thread-safe).
    */
   std::vector<knowledge_graph_msgs::msg::Edge> get_edges() const;
-
-  /**
-   * @brief Gets the names of all nodes in the graph.
-   * @return Vector of node names.
-   */
-  const std::vector<std::string> get_node_names();
 
   /**
    * @brief Gets the number of edges in the graph.
