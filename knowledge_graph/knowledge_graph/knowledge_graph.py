@@ -21,7 +21,7 @@ a distributed graph of nodes and edges with synchronization capabilities.
 """
 
 from typing import List, Optional, Union
-from threading import Lock
+from threading import Lock, RLock
 
 from rclpy.time import Time
 from rclpy.node import Node
@@ -81,6 +81,9 @@ class KnowledgeGraph:
         self.last_ts = self.node.get_clock().now()
         self._start_time = self.node.get_clock().now()
 
+        # Mutex for thread-safe graph operations (reentrant to allow nested calls)
+        self._graph_mutex = RLock()
+
         # Create publisher and subscriber for graph updates
         self._update_pub = self.node.create_publisher(
             GraphUpdate, "graph_update", self._UPDATE_QOS
@@ -103,9 +106,10 @@ class KnowledgeGraph:
         if Time(nanoseconds=elapsed).seconds_nanoseconds()[0] > 1.0:
             self._reqsync_timer.cancel()
 
-        self._publish_update(
-            GraphUpdate.REQSYNC, self.graph, element_type=GraphUpdate.GRAPH
-        )
+        with self._graph_mutex:
+            self._publish_update(
+                GraphUpdate.REQSYNC, self.graph, element_type=GraphUpdate.GRAPH
+            )
 
     def _publish_update(
         self,
@@ -197,38 +201,42 @@ class KnowledgeGraph:
         if author_id == self.graph_id:
             return
 
-        # Check for out-of-order updates
-        if ts < self.last_ts and operation not in (GraphUpdate.REQSYNC, GraphUpdate.SYNC):
-            self.node.get_logger().error(
-                f"UNORDERED UPDATE [{operation}] "
-                f"{self.last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
-            )
-
-        # Process update based on element type
-        if element == GraphUpdate.NODE:
-            if operation == GraphUpdate.UPDATE:
-                self.update_node(msg.node, sync=False)
-            elif operation == GraphUpdate.REMOVE:
-                self.remove_node(msg.removed_node, sync=False)
-
-        elif element == GraphUpdate.EDGE:
-            if operation == GraphUpdate.UPDATE:
-                self.update_edge(msg.edge, sync=False)
-            elif operation == GraphUpdate.REMOVE:
-                self.remove_edge(msg.edge, sync=False)
-
-        elif element == GraphUpdate.GRAPH:
-            if operation == GraphUpdate.SYNC and msg.target_node == self.graph_id:
-                self._reqsync_timer.cancel()
-                self._update_graph(msg.graph)
-            elif operation == GraphUpdate.REQSYNC and msg.node_id != self.graph_id:
-                self._publish_update(
-                    GraphUpdate.SYNC,
-                    self.graph,
-                    target_node=msg.node_id,
-                    element_type=GraphUpdate.GRAPH,
+        with self._graph_mutex:
+            # Check for out-of-order updates
+            if ts < self.last_ts and operation not in (
+                GraphUpdate.REQSYNC,
+                GraphUpdate.SYNC,
+            ):
+                self.node.get_logger().error(
+                    f"UNORDERED UPDATE [{operation}] "
+                    f"{self.last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
                 )
-                self._update_graph(msg.graph)
+
+            # Process update based on element type
+            if element == GraphUpdate.NODE:
+                if operation == GraphUpdate.UPDATE:
+                    self._update_node_internal(msg.node, sync=False)
+                elif operation == GraphUpdate.REMOVE:
+                    self._remove_node_internal(msg.removed_node, sync=False)
+
+            elif element == GraphUpdate.EDGE:
+                if operation == GraphUpdate.UPDATE:
+                    self._update_edge_internal(msg.edge, sync=False)
+                elif operation == GraphUpdate.REMOVE:
+                    self._remove_edge_internal(msg.edge, sync=False)
+
+            elif element == GraphUpdate.GRAPH:
+                if operation == GraphUpdate.SYNC and msg.target_node == self.graph_id:
+                    self._reqsync_timer.cancel()
+                    self._update_graph(msg.graph)
+                elif operation == GraphUpdate.REQSYNC and msg.node_id != self.graph_id:
+                    self._publish_update(
+                        GraphUpdate.SYNC,
+                        self.graph,
+                        target_node=msg.node_id,
+                        element_type=GraphUpdate.GRAPH,
+                    )
+                    self._update_graph(msg.graph)
 
     def _update_graph(self, msg: GraphMsg) -> None:
         """
@@ -236,21 +244,22 @@ class KnowledgeGraph:
 
         @param msg The GraphMsg containing nodes and edges to merge.
         """
-        for n in msg.nodes:
-            self.update_node(n, sync=False)
+        with self._graph_mutex:
+            for n in msg.nodes:
+                self._update_node_internal(n, sync=False)
 
-        for e in msg.edges:
-            self.update_edge(e, sync=False)
+            for e in msg.edges:
+                self._update_edge_internal(e, sync=False)
 
-        self._update_timestamp()
+            self._update_timestamp()
 
     # =========================================================================
-    # Node Operations
+    # Internal Methods (no lock, assumes caller holds the mutex)
     # =========================================================================
 
-    def update_node(self, node: NodeMsg, sync: bool = True) -> bool:
+    def _update_node_internal(self, node: NodeMsg, sync: bool = True) -> bool:
         """
-        @brief Adds or updates a node in the graph.
+        @brief Internal method to add or update a node (assumes lock is held).
 
         @param node The node message to add or update.
         @param sync Whether to synchronize this update with other graphs.
@@ -269,23 +278,24 @@ class KnowledgeGraph:
         self._update_timestamp()
         return True
 
-    def remove_node(self, node_name: str, sync: bool = True) -> bool:
+    def _remove_node_internal(self, node_name: str, sync: bool = True) -> bool:
         """
-        @brief Removes a node and all its connected edges from the graph.
+        @brief Internal method to remove a node (assumes lock is held).
 
         @param node_name The name of the node to remove.
         @param sync Whether to synchronize this update with other graphs.
         @return True if the node was removed, False if it didn't exist.
         """
-        node = self.get_node(node_name)
-        if node is None:
+        idx = self._find_node_index(node_name)
+        if idx == -1:
             return False
 
+        node = self.graph.nodes[idx]
+
         # Remove the node
-        self.graph.nodes.remove(node)
+        del self.graph.nodes[idx]
 
         # Remove all edges connected to this node
-        # Use list comprehension to create a new list (avoids modifying while iterating)
         self.graph.edges = [
             e
             for e in self.graph.edges
@@ -298,68 +308,21 @@ class KnowledgeGraph:
         self._update_timestamp()
         return True
 
-    def exist_node(self, node_name: str) -> bool:
+    def _update_edge_internal(self, edge: EdgeMsg, sync: bool = True) -> bool:
         """
-        @brief Checks if a node exists in the graph.
-
-        @param node_name The name of the node to check.
-        @return True if the node exists, False otherwise.
-        """
-        return self.get_node(node_name) is not None
-
-    def get_node(self, node_name: str) -> Optional[NodeMsg]:
-        """
-        @brief Retrieves a node by name.
-
-        @param node_name The name of the node to retrieve.
-        @return The node message if found, None otherwise.
-        """
-        idx = self._find_node_index(node_name)
-        return self.graph.nodes[idx] if idx != -1 else None
-
-    def get_node_names(self) -> List[str]:
-        """
-        @brief Gets the names of all nodes in the graph.
-
-        @return A list of node names.
-        """
-        return [n.node_name for n in self.graph.nodes]
-
-    def get_nodes(self) -> List[NodeMsg]:
-        """
-        @brief Gets all nodes in the graph.
-
-        @return A list of all node messages.
-        """
-        return self.graph.nodes
-
-    def get_num_nodes(self) -> int:
-        """
-        @brief Gets the number of nodes in the graph.
-
-        @return The number of nodes.
-        """
-        return len(self.graph.nodes)
-
-    # =========================================================================
-    # Edge Operations
-    # =========================================================================
-
-    def update_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
-        """
-        @brief Adds or updates an edge in the graph.
+        @brief Internal method to add or update an edge (assumes lock is held).
 
         @param edge The edge message to add or update.
         @param sync Whether to synchronize this update with other graphs.
         @return True if successful, False if source or target node doesn't exist.
         """
-        if not self.exist_node(edge.source_node):
+        if self._find_node_index(edge.source_node) == -1:
             self.node.get_logger().error(
                 f"Node source [{edge.source_node}] doesn't exist adding edge"
             )
             return False
 
-        if not self.exist_node(edge.target_node):
+        if self._find_node_index(edge.target_node) == -1:
             self.node.get_logger().error(
                 f"Node target [{edge.target_node}] doesn't exist adding edge"
             )
@@ -378,9 +341,9 @@ class KnowledgeGraph:
         self._update_timestamp()
         return True
 
-    def remove_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
+    def _remove_edge_internal(self, edge: EdgeMsg, sync: bool = True) -> bool:
         """
-        @brief Removes an edge from the graph.
+        @brief Internal method to remove an edge (assumes lock is held).
 
         @param edge The edge to remove (matched by source, target, and class).
         @param sync Whether to synchronize this update with other graphs.
@@ -398,6 +361,106 @@ class KnowledgeGraph:
 
         self._update_timestamp()
         return True
+
+    # =========================================================================
+    # Node Operations
+    # =========================================================================
+
+    def update_node(self, node: NodeMsg, sync: bool = True) -> bool:
+        """
+        @brief Adds or updates a node in the graph.
+
+        @param node The node message to add or update.
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if the operation was successful.
+        """
+        with self._graph_mutex:
+            return self._update_node_internal(node, sync)
+
+    def remove_node(self, node_name: str, sync: bool = True) -> bool:
+        """
+        @brief Removes a node and all its connected edges from the graph.
+
+        @param node_name The name of the node to remove.
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if the node was removed, False if it didn't exist.
+        """
+        with self._graph_mutex:
+            return self._remove_node_internal(node_name, sync)
+
+    def exist_node(self, node_name: str) -> bool:
+        """
+        @brief Checks if a node exists in the graph.
+
+        @param node_name The name of the node to check.
+        @return True if the node exists, False otherwise.
+        """
+        with self._graph_mutex:
+            return self._find_node_index(node_name) != -1
+
+    def get_node(self, node_name: str) -> Optional[NodeMsg]:
+        """
+        @brief Retrieves a node by name.
+
+        @param node_name The name of the node to retrieve.
+        @return The node message if found, None otherwise.
+        """
+        with self._graph_mutex:
+            idx = self._find_node_index(node_name)
+            return self.graph.nodes[idx] if idx != -1 else None
+
+    def get_node_names(self) -> List[str]:
+        """
+        @brief Gets the names of all nodes in the graph.
+
+        @return A list of node names.
+        """
+        with self._graph_mutex:
+            return [n.node_name for n in self.graph.nodes]
+
+    def get_nodes(self) -> List[NodeMsg]:
+        """
+        @brief Gets all nodes in the graph.
+
+        @return A list of all node messages.
+        """
+        with self._graph_mutex:
+            return list(self.graph.nodes)
+
+    def get_num_nodes(self) -> int:
+        """
+        @brief Gets the number of nodes in the graph.
+
+        @return The number of nodes.
+        """
+        with self._graph_mutex:
+            return len(self.graph.nodes)
+
+    # =========================================================================
+    # Edge Operations
+    # =========================================================================
+
+    def update_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
+        """
+        @brief Adds or updates an edge in the graph.
+
+        @param edge The edge message to add or update.
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if successful, False if source or target node doesn't exist.
+        """
+        with self._graph_mutex:
+            return self._update_edge_internal(edge, sync)
+
+    def remove_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
+        """
+        @brief Removes an edge from the graph.
+
+        @param edge The edge to remove (matched by source, target, and class).
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if the edge was removed, False if it didn't exist.
+        """
+        with self._graph_mutex:
+            return self._remove_edge_internal(edge, sync)
 
     def get_edges(
         self,
@@ -417,17 +480,18 @@ class KnowledgeGraph:
         If edge_class is provided, filters by class.
         If source and target are provided, filters by endpoints.
         """
-        if (source is None or target is None) and edge_class is None:
-            return self.graph.edges
+        with self._graph_mutex:
+            if (source is None or target is None) and edge_class is None:
+                return list(self.graph.edges)
 
-        if edge_class is not None:
-            return [e for e in self.graph.edges if e.edge_class == edge_class]
+            if edge_class is not None:
+                return [e for e in self.graph.edges if e.edge_class == edge_class]
 
-        return [
-            e
-            for e in self.graph.edges
-            if e.source_node == source and e.target_node == target
-        ]
+            return [
+                e
+                for e in self.graph.edges
+                if e.source_node == source and e.target_node == target
+            ]
 
     def get_out_edges(self, source: str) -> List[EdgeMsg]:
         """
@@ -436,7 +500,8 @@ class KnowledgeGraph:
         @param source The source node name.
         @return A list of edges originating from the source node.
         """
-        return [e for e in self.graph.edges if e.source_node == source]
+        with self._graph_mutex:
+            return [e for e in self.graph.edges if e.source_node == source]
 
     def get_in_edges(self, target: str) -> List[EdgeMsg]:
         """
@@ -445,7 +510,8 @@ class KnowledgeGraph:
         @param target The target node name.
         @return A list of edges targeting the specified node.
         """
-        return [e for e in self.graph.edges if e.target_node == target]
+        with self._graph_mutex:
+            return [e for e in self.graph.edges if e.target_node == target]
 
     def get_num_edges(self) -> int:
         """
@@ -453,4 +519,5 @@ class KnowledgeGraph:
 
         @return The number of edges.
         """
-        return len(self.graph.edges)
+        with self._graph_mutex:
+            return len(self.graph.edges)
