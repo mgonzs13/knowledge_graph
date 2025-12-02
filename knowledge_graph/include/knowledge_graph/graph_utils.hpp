@@ -663,7 +663,7 @@ inline std::string to_string(const knowledge_graph_msgs::msg::Node &node) {
  */
 inline std::string to_string(const knowledge_graph_msgs::msg::Edge &edge) {
   std::string ret;
-  ret = ret + " [" + edge.edge_class + "]" + edge.source_node + " -> " +
+  ret = ret + " [" + edge.edge_class + "] " + edge.source_node + " -> " +
         edge.target_node;
   return ret;
 }
