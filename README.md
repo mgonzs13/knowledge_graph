@@ -15,6 +15,16 @@ rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
+## Testing
+
+The C++ knowledge graph includes unit tests using GTest. To run the tests:
+
+```shell
+cd ~/ros2_ws
+colcon test --packages-select knowledge_graph
+colcon test-result --verbose
+```
+
 ## Usage
 
 ### C++
@@ -81,19 +91,19 @@ bool update_node(const knowledge_graph_msgs::msg::Node &node, bool sync = true);
 ```
 
 ```cpp
-bool remove_node(const std::string node, bool sync = true);
+bool remove_node(const std::string &node, bool sync = true);
 ```
 
 ```cpp
-bool exist_node(const std::string node);
+bool exist_node(const std::string &node);
 ```
 
 ```cpp
-std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string node);
+std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string &node);
 ```
 
 ```cpp
-std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string node);
+std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string &node);
 ```
 
 - Edges

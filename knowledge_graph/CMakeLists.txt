@@ -36,4 +36,20 @@ ament_export_libraries(${PROJECT_NAME})
 ament_export_dependencies(${dependencies})
 ament_python_install_package(${PROJECT_NAME})
 
+# Testing
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  # Graph utils tests
+  ament_add_gtest(graph_utils_test test/graph_utils_test.cpp)
+  target_include_directories(graph_utils_test PRIVATE include)
+  ament_target_dependencies(graph_utils_test ${dependencies})
+
+  # Knowledge graph tests
+  ament_add_gtest(knowledge_graph_test test/knowledge_graph_test.cpp)
+  target_include_directories(knowledge_graph_test PRIVATE include)
+  target_link_libraries(knowledge_graph_test ${PROJECT_NAME})
+  ament_target_dependencies(knowledge_graph_test ${dependencies})
+endif()
+
 ament_package()
