@@ -36,7 +36,7 @@ import unittest
 import os
 from knowledge_graph_viewer.dotcode import KnowledgeGraphDotcodeGenerator
 
-PKG = 'knowledge_graph_viewer'
+PKG = "knowledge_graph_viewer"
 
 
 class MockRclpyNode:

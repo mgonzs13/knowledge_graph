@@ -93,7 +93,7 @@ std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string node);
 ```
 
 ```cpp
-std::optional<knowledge_graph_msgs::msg::Node> get_node();
+std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string node);
 ```
 
 - Edges

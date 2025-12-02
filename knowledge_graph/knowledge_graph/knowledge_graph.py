@@ -279,7 +279,7 @@ class KnowledgeGraph:
 
         return True
 
-    def update_gaph(self, msg: GraphMsg) -> None:
+    def update_graph(self, msg: GraphMsg) -> None:
         for n in msg.nodes:
             self.update_node(n, False)
 
@@ -330,9 +330,9 @@ class KnowledgeGraph:
             if operation == GraphUpdate.SYNC:
                 if msg.target_node == self.graph_id:
                     self.reqsync_timer.cancel()
-                    self.update_gaph(msg.graph)
+                    self.update_graph(msg.graph)
 
             elif operation == GraphUpdate.REQSYNC:
                 if msg.node_id != self.graph_id:
                     self.publish_update(GraphUpdate.SYNC, self.graph, msg.node_id)
-                    self.update_gaph(msg.graph)
+                    self.update_graph(msg.graph)
