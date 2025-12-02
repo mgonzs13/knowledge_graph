@@ -39,6 +39,7 @@ ament_python_install_package(${PROJECT_NAME})
 # Testing
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_pytest REQUIRED)
 
   # Graph utils tests
   ament_add_gtest(graph_utils_test test/graph_utils_test.cpp)
@@ -50,6 +51,10 @@ if(BUILD_TESTING)
   target_include_directories(knowledge_graph_test PRIVATE include)
   target_link_libraries(knowledge_graph_test ${PROJECT_NAME})
   ament_target_dependencies(knowledge_graph_test ${dependencies})
+
+  # Python tests
+  ament_add_pytest_test(test_graph_utils_py test/test_graph_utils.py)
+  ament_add_pytest_test(test_knowledge_graph_py test/test_knowledge_graph.py)
 endif()
 
 ament_package()

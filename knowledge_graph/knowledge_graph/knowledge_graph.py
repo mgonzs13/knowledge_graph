@@ -12,240 +12,347 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+@file knowledge_graph.py
+@brief Knowledge Graph implementation for ROS 2.
 
-from typing import List
-from typing import Union
+This module provides a singleton KnowledgeGraph class that manages
+a distributed graph of nodes and edges with synchronization capabilities.
+"""
+
+from typing import List, Optional, Union
+from threading import Lock
+
 from rclpy.time import Time
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
-from rclpy.qos import QoSHistoryPolicy
-from rclpy.qos import QoSReliabilityPolicy
+from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
+
 from knowledge_graph_msgs.msg import Node as NodeMsg
 from knowledge_graph_msgs.msg import Edge as EdgeMsg
 from knowledge_graph_msgs.msg import Graph as GraphMsg
 from knowledge_graph_msgs.msg import GraphUpdate
-from threading import Lock
 
 
 class KnowledgeGraph:
+    """
+    @brief Singleton class for managing a distributed knowledge graph.
+
+    The KnowledgeGraph class provides functionality for managing nodes and edges
+    in a graph structure with support for distributed synchronization across
+    multiple ROS 2 nodes.
+    """
 
     _instance: "KnowledgeGraph" = None
     _lock: Lock = Lock()
 
+    # QoS profile for graph updates
+    _UPDATE_QOS = QoSProfile(
+        history=QoSHistoryPolicy.KEEP_LAST,
+        depth=100,
+        reliability=QoSReliabilityPolicy.RELIABLE,
+    )
+
     @staticmethod
-    def get_instance(node: Node):
+    def get_instance(node: Node) -> "KnowledgeGraph":
+        """
+        @brief Gets the singleton instance of KnowledgeGraph.
+
+        @param node The ROS 2 node to use for communication.
+        @return The singleton KnowledgeGraph instance.
+        """
         with KnowledgeGraph._lock:
-            if KnowledgeGraph._instance == None:
+            if KnowledgeGraph._instance is None:
                 KnowledgeGraph._instance = KnowledgeGraph(node)
             return KnowledgeGraph._instance
 
     def __init__(self, provided_node: Node) -> None:
+        """
+        @brief Initializes the KnowledgeGraph.
 
-        if not KnowledgeGraph._instance is None:
+        @param provided_node The ROS 2 node to use for communication.
+        @raise Exception If an instance already exists (Singleton pattern).
+        """
+        if KnowledgeGraph._instance is not None:
             raise Exception("This class is a Singleton")
 
         self.node = provided_node
-
         self.graph = GraphMsg()
         self.graph_id = self.node.get_name()
-
-        self.update_pub = self.node.create_publisher(
-            GraphUpdate,
-            "graph_update",
-            QoSProfile(
-                history=QoSHistoryPolicy.KEEP_LAST,
-                depth=100,
-                reliability=QoSReliabilityPolicy.RELIABLE,
-            ),
-        )
-        self.update_sub = self.node.create_subscription(
-            GraphUpdate,
-            "graph_update",
-            self.update_callback,
-            QoSProfile(
-                history=QoSHistoryPolicy.KEEP_LAST,
-                depth=100,
-                reliability=QoSReliabilityPolicy.RELIABLE,
-            ),
-        )
-
         self.last_ts = self.node.get_clock().now()
-        self.start_time = self.node.get_clock().now()
+        self._start_time = self.node.get_clock().now()
 
-        self.reqsync_timer = self.node.create_timer(0.1, self.reqsync_timer_callback)
-        self.reqsync_timer_callback()
+        # Create publisher and subscriber for graph updates
+        self._update_pub = self.node.create_publisher(
+            GraphUpdate, "graph_update", self._UPDATE_QOS
+        )
+        self._update_sub = self.node.create_subscription(
+            GraphUpdate, "graph_update", self._update_callback, self._UPDATE_QOS
+        )
 
-    def reqsync_timer_callback(self) -> None:
-        if (
-            Time(
-                nanoseconds=(self.node.get_clock().now() - self.start_time).nanoseconds
-            ).seconds_nanoseconds()[0]
-            > 1.0
-        ):
-            self.reqsync_timer.cancel()
+        # Start sync timer
+        self._reqsync_timer = self.node.create_timer(0.1, self._reqsync_timer_callback)
+        self._reqsync_timer_callback()
 
-        hello_msg = GraphUpdate()
-        hello_msg.stamp = self.node.get_clock().now().to_msg()
-        hello_msg.node_id = self.graph_id
-        hello_msg.operation_type = GraphUpdate.REQSYNC
-        hello_msg.element_type = GraphUpdate.GRAPH
-        hello_msg.graph = self.graph
+    # =========================================================================
+    # Private Methods
+    # =========================================================================
 
-        self.update_pub.publish(hello_msg)
+    def _reqsync_timer_callback(self) -> None:
+        """@brief Timer callback for requesting graph synchronization."""
+        elapsed = (self.node.get_clock().now() - self._start_time).nanoseconds
+        if Time(nanoseconds=elapsed).seconds_nanoseconds()[0] > 1.0:
+            self._reqsync_timer.cancel()
 
-    def publish_update(
+        self._publish_update(
+            GraphUpdate.REQSYNC, self.graph, element_type=GraphUpdate.GRAPH
+        )
+
+    def _publish_update(
         self,
         operation_type: int,
         element: Union[NodeMsg, EdgeMsg, GraphMsg],
         target_node: str = "",
+        element_type: Optional[int] = None,
     ) -> None:
+        """
+        @brief Publishes a graph update message.
 
+        @param operation_type The type of operation (UPDATE, REMOVE, etc.).
+        @param element The graph element being updated.
+        @param target_node Optional target node for directed updates.
+        @param element_type Optional explicit element type.
+        """
         update_msg = GraphUpdate()
+        update_msg.stamp = self.node.get_clock().now().to_msg()
+        update_msg.node_id = self.graph_id
+        update_msg.target_node = target_node
+        update_msg.operation_type = operation_type
 
-        if isinstance(element, NodeMsg):
+        if element_type is not None:
+            update_msg.element_type = element_type
+        elif isinstance(element, NodeMsg):
             update_msg.element_type = GraphUpdate.NODE
+        elif isinstance(element, EdgeMsg):
+            update_msg.element_type = GraphUpdate.EDGE
+        elif isinstance(element, GraphMsg):
+            update_msg.element_type = GraphUpdate.GRAPH
+
+        # Set the appropriate field based on element type
+        if isinstance(element, NodeMsg):
             if operation_type == GraphUpdate.REMOVE:
                 update_msg.removed_node = element.node_name
             else:
                 update_msg.node = element
         elif isinstance(element, EdgeMsg):
-            update_msg.element_type = GraphUpdate.EDGE
             update_msg.edge = element
         elif isinstance(element, GraphMsg):
-            update_msg.element_type = GraphUpdate.GRAPH
             update_msg.graph = element
 
-        update_msg.stamp = self.node.get_clock().now().to_msg()
-        update_msg.node_id = self.graph_id
-        update_msg.target_node = target_node
-        update_msg.operation_type = operation_type
-        self.update_pub.publish(update_msg)
+        self._update_pub.publish(update_msg)
 
-    def remove_node(self, node: str, sync: bool = True) -> bool:
-        removed = False
+    def _find_node_index(self, node_name: str) -> int:
+        """
+        @brief Finds the index of a node by name.
 
-        n = self.get_node(node)
-        if not n is None:
-            self.graph.nodes.remove(n)
-            removed = True
+        @param node_name The name of the node to find.
+        @return The index of the node, or -1 if not found.
+        """
+        for idx, n in enumerate(self.graph.nodes):
+            if n.node_name == node_name:
+                return idx
+        return -1
 
-        if removed:
-            for e in self.graph.edges:
-                if e.source_node == node or e.target_node == node:
-                    self.graph.edges.remove(e)
+    def _find_edge_index(self, edge: EdgeMsg) -> int:
+        """
+        @brief Finds the index of an edge.
 
-        if removed:
-            if sync:
-                self.publish_update(GraphUpdate.REMOVE, n)
-
-            self.last_ts = self.node.get_clock().now()
-
-        return removed
-
-    def exist_node(self, node: str) -> bool:
-        return not self.get_node(node) is None
-
-    def get_node(self, node: str) -> NodeMsg:
-        for n in self.graph.nodes:
-            if n.node_name == node:
-                return n
-        return None
-
-    def get_node_names(self) -> List[str]:
-        ret = []
-        for n in self.graph.nodes:
-            ret.append(n.node_name)
-        return ret
-
-    def remove_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
-        removed = False
-
-        for e in self.graph.edges:
+        @param edge The edge to find.
+        @return The index of the edge, or -1 if not found.
+        """
+        for idx, e in enumerate(self.graph.edges):
             if (
                 e.source_node == edge.source_node
                 and e.target_node == edge.target_node
                 and e.edge_class == edge.edge_class
             ):
+                return idx
+        return -1
 
-                self.graph.edges.remove(e)
-                removed = True
-                break
+    def _update_timestamp(self) -> None:
+        """@brief Updates the last modification timestamp."""
+        self.last_ts = self.node.get_clock().now()
 
-        if removed:
-            if sync:
-                self.publish_update(GraphUpdate.REMOVE, edge)
+    def _update_callback(self, msg: GraphUpdate) -> None:
+        """
+        @brief Callback for processing incoming graph updates.
 
-            self.last_ts = self.node.get_clock().now()
+        @param msg The received GraphUpdate message.
+        """
+        author_id = msg.node_id
+        element = msg.element_type
+        operation = msg.operation_type
+        ts = Time.from_msg(msg.stamp)
 
-        return removed
+        # Ignore our own updates
+        if author_id == self.graph_id:
+            return
 
-    def get_nodes(self) -> List[NodeMsg]:
-        return self.graph.nodes
+        # Check for out-of-order updates
+        if ts < self.last_ts and operation not in (GraphUpdate.REQSYNC, GraphUpdate.SYNC):
+            self.node.get_logger().error(
+                f"UNORDERED UPDATE [{operation}] "
+                f"{self.last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
+            )
 
-    def get_edges(
-        self, source: str = None, target: str = None, edge_class: str = None
-    ) -> List[EdgeMsg]:
+        # Process update based on element type
+        if element == GraphUpdate.NODE:
+            if operation == GraphUpdate.UPDATE:
+                self.update_node(msg.node, sync=False)
+            elif operation == GraphUpdate.REMOVE:
+                self.remove_node(msg.removed_node, sync=False)
 
-        if (source is None or target is None) and edge_class is None:
-            return self.graph.edges
+        elif element == GraphUpdate.EDGE:
+            if operation == GraphUpdate.UPDATE:
+                self.update_edge(msg.edge, sync=False)
+            elif operation == GraphUpdate.REMOVE:
+                self.remove_edge(msg.edge, sync=False)
 
-        ret = []
-        for e in self.graph.edges:
+        elif element == GraphUpdate.GRAPH:
+            if operation == GraphUpdate.SYNC and msg.target_node == self.graph_id:
+                self._reqsync_timer.cancel()
+                self._update_graph(msg.graph)
+            elif operation == GraphUpdate.REQSYNC and msg.node_id != self.graph_id:
+                self._publish_update(
+                    GraphUpdate.SYNC,
+                    self.graph,
+                    target_node=msg.node_id,
+                    element_type=GraphUpdate.GRAPH,
+                )
+                self._update_graph(msg.graph)
 
-            if not edge_class is None:
-                if e.edge_class == edge_class:
-                    ret.append(e)
+    def _update_graph(self, msg: GraphMsg) -> None:
+        """
+        @brief Updates the graph with data from another graph message.
 
-            else:
-                if e.source_node == source and e.target_node == target:
-                    ret.append(e)
-        return ret
+        @param msg The GraphMsg containing nodes and edges to merge.
+        """
+        for n in msg.nodes:
+            self.update_node(n, sync=False)
 
-    def get_out_edges(self, source: str) -> List[EdgeMsg]:
+        for e in msg.edges:
+            self.update_edge(e, sync=False)
 
-        ret = []
-        for e in self.graph.edges:
-            if e.source_node == source:
-                ret.append(e)
-        return ret
+        self._update_timestamp()
 
-    def get_in_edges(self, target: str) -> List[EdgeMsg]:
-
-        ret = []
-        for e in self.graph.edges:
-            if e.target_node == target:
-                ret.append(e)
-        return ret
-
-    def get_num_edges(self) -> int:
-        return len(self.graph.edges)
-
-    def get_num_nodes(self) -> int:
-        return len(self.graph.nodes)
+    # =========================================================================
+    # Node Operations
+    # =========================================================================
 
     def update_node(self, node: NodeMsg, sync: bool = True) -> bool:
+        """
+        @brief Adds or updates a node in the graph.
 
-        node_msg = None
-        idx = -1
+        @param node The node message to add or update.
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if the operation was successful.
+        """
+        idx = self._find_node_index(node.node_name)
 
-        for idx, n in enumerate(self.graph.nodes):
-            if n.node_name == node.node_name:
-                node_msg = n
-                break
-
-        if node_msg is None:
+        if idx == -1:
             self.graph.nodes.append(node)
         else:
             self.graph.nodes[idx] = node
 
         if sync:
-            self.publish_update(GraphUpdate.UPDATE, node)
+            self._publish_update(GraphUpdate.UPDATE, node)
 
-        self.last_ts = self.node.get_clock().now()
-
+        self._update_timestamp()
         return True
 
+    def remove_node(self, node_name: str, sync: bool = True) -> bool:
+        """
+        @brief Removes a node and all its connected edges from the graph.
+
+        @param node_name The name of the node to remove.
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if the node was removed, False if it didn't exist.
+        """
+        node = self.get_node(node_name)
+        if node is None:
+            return False
+
+        # Remove the node
+        self.graph.nodes.remove(node)
+
+        # Remove all edges connected to this node
+        # Use list comprehension to create a new list (avoids modifying while iterating)
+        self.graph.edges = [
+            e
+            for e in self.graph.edges
+            if e.source_node != node_name and e.target_node != node_name
+        ]
+
+        if sync:
+            self._publish_update(GraphUpdate.REMOVE, node)
+
+        self._update_timestamp()
+        return True
+
+    def exist_node(self, node_name: str) -> bool:
+        """
+        @brief Checks if a node exists in the graph.
+
+        @param node_name The name of the node to check.
+        @return True if the node exists, False otherwise.
+        """
+        return self.get_node(node_name) is not None
+
+    def get_node(self, node_name: str) -> Optional[NodeMsg]:
+        """
+        @brief Retrieves a node by name.
+
+        @param node_name The name of the node to retrieve.
+        @return The node message if found, None otherwise.
+        """
+        idx = self._find_node_index(node_name)
+        return self.graph.nodes[idx] if idx != -1 else None
+
+    def get_node_names(self) -> List[str]:
+        """
+        @brief Gets the names of all nodes in the graph.
+
+        @return A list of node names.
+        """
+        return [n.node_name for n in self.graph.nodes]
+
+    def get_nodes(self) -> List[NodeMsg]:
+        """
+        @brief Gets all nodes in the graph.
+
+        @return A list of all node messages.
+        """
+        return self.graph.nodes
+
+    def get_num_nodes(self) -> int:
+        """
+        @brief Gets the number of nodes in the graph.
+
+        @return The number of nodes.
+        """
+        return len(self.graph.nodes)
+
+    # =========================================================================
+    # Edge Operations
+    # =========================================================================
+
     def update_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
+        """
+        @brief Adds or updates an edge in the graph.
+
+        @param edge The edge message to add or update.
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if successful, False if source or target node doesn't exist.
+        """
         if not self.exist_node(edge.source_node):
             self.node.get_logger().error(
                 f"Node source [{edge.source_node}] doesn't exist adding edge"
@@ -254,85 +361,96 @@ class KnowledgeGraph:
 
         if not self.exist_node(edge.target_node):
             self.node.get_logger().error(
-                f"Node source [{edge.target_node}] doesn't exist adding edge"
+                f"Node target [{edge.target_node}] doesn't exist adding edge"
             )
             return False
 
-        found = False
-        for idx, e in enumerate(self.graph.edges):
-            if (
-                e.source_node == edge.source_node
-                and e.target_node == edge.target_node
-                and e.edge_class == edge.edge_class
-            ):
+        idx = self._find_edge_index(edge)
 
-                self.graph.edges[idx] = edge
-                found = True
-                break
-
-        if not found:
+        if idx == -1:
             self.graph.edges.append(edge)
+        else:
+            self.graph.edges[idx] = edge
 
         if sync:
-            self.publish_update(GraphUpdate.UPDATE, edge)
-        self.last_ts = self.node.get_clock().now()
+            self._publish_update(GraphUpdate.UPDATE, edge)
 
+        self._update_timestamp()
         return True
 
-    def update_graph(self, msg: GraphMsg) -> None:
-        for n in msg.nodes:
-            self.update_node(n, False)
+    def remove_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
+        """
+        @brief Removes an edge from the graph.
 
-        for e in msg.edges:
-            self.update_edge(e, False)
+        @param edge The edge to remove (matched by source, target, and class).
+        @param sync Whether to synchronize this update with other graphs.
+        @return True if the edge was removed, False if it didn't exist.
+        """
+        idx = self._find_edge_index(edge)
 
-        self.last_ts = self.node.get_clock().now()
+        if idx == -1:
+            return False
 
-    def update_callback(self, msg: GraphUpdate) -> None:
-        author_id = msg.node_id
-        element = msg.element_type
-        operation = msg.operation_type
-        ts = Time.from_msg(msg.stamp)
+        del self.graph.edges[idx]
 
-        if author_id == self.graph_id:
-            return
+        if sync:
+            self._publish_update(GraphUpdate.REMOVE, edge)
 
-        if (
-            ts < self.last_ts
-            and operation != GraphUpdate.REQSYNC
-            and operation != GraphUpdate.SYNC
-        ):
-            self.node.get_logger().error(
-                f"UNORDERER UPDATE [{operation}] {self.last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
-            )
+        self._update_timestamp()
+        return True
 
-        if element == GraphUpdate.NODE:
-            if author_id == self.graph_id:
-                return
+    def get_edges(
+        self,
+        source: Optional[str] = None,
+        target: Optional[str] = None,
+        edge_class: Optional[str] = None,
+    ) -> List[EdgeMsg]:
+        """
+        @brief Gets edges matching the specified criteria.
 
-            if operation == GraphUpdate.UPDATE:
-                self.update_node(msg.node, False)
+        @param source The source node name (optional).
+        @param target The target node name (optional).
+        @param edge_class The edge class to filter by (optional).
+        @return A list of matching edges.
 
-            elif operation == GraphUpdate.REMOVE:
-                self.remove_node(msg.removed_node, False)
+        If no parameters are provided, returns all edges.
+        If edge_class is provided, filters by class.
+        If source and target are provided, filters by endpoints.
+        """
+        if (source is None or target is None) and edge_class is None:
+            return self.graph.edges
 
-        elif element == GraphUpdate.EDGE:
-            if author_id == self.graph_id:
-                return
+        if edge_class is not None:
+            return [e for e in self.graph.edges if e.edge_class == edge_class]
 
-            if operation == GraphUpdate.UPDATE:
-                self.update_edge(msg.edge, False)
+        return [
+            e
+            for e in self.graph.edges
+            if e.source_node == source and e.target_node == target
+        ]
 
-            elif operation == GraphUpdate.REMOVE:
-                self.remove_edge(msg.edge, False)
+    def get_out_edges(self, source: str) -> List[EdgeMsg]:
+        """
+        @brief Gets all outgoing edges from a node.
 
-        elif element == GraphUpdate.GRAPH:
-            if operation == GraphUpdate.SYNC:
-                if msg.target_node == self.graph_id:
-                    self.reqsync_timer.cancel()
-                    self.update_graph(msg.graph)
+        @param source The source node name.
+        @return A list of edges originating from the source node.
+        """
+        return [e for e in self.graph.edges if e.source_node == source]
 
-            elif operation == GraphUpdate.REQSYNC:
-                if msg.node_id != self.graph_id:
-                    self.publish_update(GraphUpdate.SYNC, self.graph, msg.node_id)
-                    self.update_graph(msg.graph)
+    def get_in_edges(self, target: str) -> List[EdgeMsg]:
+        """
+        @brief Gets all incoming edges to a node.
+
+        @param target The target node name.
+        @return A list of edges targeting the specified node.
+        """
+        return [e for e in self.graph.edges if e.target_node == target]
+
+    def get_num_edges(self) -> int:
+        """
+        @brief Gets the number of edges in the graph.
+
+        @return The number of edges.
+        """
+        return len(self.graph.edges)
