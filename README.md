@@ -211,11 +211,11 @@ def get_in_edges(self, target: str) -> List[Edge]
 - Termial & Viewer
 
 ```shell
-$ ros2 run knowledge_graph_terminal knowledge_graph_terminal
+ros2 run knowledge_graph_terminal knowledge_graph_terminal
 ```
 
 ```shell
-$ rqt
+rqt
 ```
 
 ![](./docs/demo_terminal_viewer.gif)
@@ -223,7 +223,7 @@ $ rqt
 - SQLite
 
 ```shell
-$ ros2 run knowledge_graph_db knowledge_graph_db_node --ros-args -p db_file:=my_knowledge_graph.db
+ros2 run knowledge_graph_db knowledge_graph_db_node --ros-args -p db_file:=my_knowledge_graph.db
 ```
 
 ![](./docs/demo_db.gif)
