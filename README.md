@@ -7,12 +7,12 @@ ROS 2 knowledge graph provides you a way to share a graph between nodes running 
 ## Installation
 
 ```shell
-$ cd ~/ros2_ws/src
-$ git clone https://github.com/mgonzs13/knowledge_graph.git
-$ pip3 install -r knowledge_graph/requirements.txt
-$ cd ~/ros2_ws
-$ rosdep install --from-paths src --ignore-src -r -y
-$ colcon build
+cd ~/ros2_ws/src
+git clone https://github.com/mgonzs13/knowledge_graph.git
+pip3 install -r knowledge_graph/requirements.txt
+cd ~/ros2_ws
+rosdep install --from-paths src --ignore-src -r -y
+colcon build
 ```
 
 ## Usage
