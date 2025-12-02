@@ -13,10 +13,10 @@ find_package(knowledge_graph_msgs REQUIRED)
 
 # Create demo executable
 add_executable(knowledge_graph_demo src/knowledge_graph_demo.cpp)
-ament_target_dependencies(knowledge_graph_demo
-  rclcpp
-  knowledge_graph
-  knowledge_graph_msgs
+target_link_libraries(knowledge_graph_demo
+  rclcpp::rclcpp
+  knowledge_graph::knowledge_graph
+  ${knowledge_graph_msgs_TARGETS}
 )
 
 install(TARGETS

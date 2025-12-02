@@ -9,12 +9,6 @@ find_package(rclpy REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(knowledge_graph_msgs REQUIRED)
 
-set(dependencies
-  rclcpp
-  rclcpp_lifecycle
-  knowledge_graph_msgs
-)
-
 include_directories(include)
 install(DIRECTORY include/
   DESTINATION include/
@@ -23,17 +17,25 @@ install(DIRECTORY include/
 add_library(${PROJECT_NAME} SHARED
   src/knowledge_graph/knowledge_graph.cpp
 )
-ament_target_dependencies(${PROJECT_NAME} ${dependencies})
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(${PROJECT_NAME}
+  rclcpp::rclcpp
+  rclcpp_lifecycle::rclcpp_lifecycle
+  ${knowledge_graph_msgs_TARGETS}
+)
 install(TARGETS
   ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}Targets
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
-ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME})
-ament_export_dependencies(${dependencies})
+ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
+ament_export_dependencies(rclcpp rclcpp_lifecycle knowledge_graph_msgs)
 ament_python_install_package(${PROJECT_NAME})
 
 # Testing
@@ -44,13 +46,21 @@ if(BUILD_TESTING)
   # Graph utils tests
   ament_add_gtest(graph_utils_test test/graph_utils_test.cpp)
   target_include_directories(graph_utils_test PRIVATE include)
-  ament_target_dependencies(graph_utils_test ${dependencies})
+  target_link_libraries(graph_utils_test
+    rclcpp::rclcpp
+    rclcpp_lifecycle::rclcpp_lifecycle
+    ${knowledge_graph_msgs_TARGETS}
+  )
 
   # Knowledge graph tests
   ament_add_gtest(knowledge_graph_test test/knowledge_graph_test.cpp)
   target_include_directories(knowledge_graph_test PRIVATE include)
-  target_link_libraries(knowledge_graph_test ${PROJECT_NAME})
-  ament_target_dependencies(knowledge_graph_test ${dependencies})
+  target_link_libraries(knowledge_graph_test
+    ${PROJECT_NAME}
+    rclcpp::rclcpp
+    rclcpp_lifecycle::rclcpp_lifecycle
+    ${knowledge_graph_msgs_TARGETS}
+  )
 
   # Python tests
   ament_add_pytest_test(test_graph_utils_py test/test_graph_utils.py)

@@ -8,21 +8,23 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(knowledge_graph REQUIRED)
 
-set(dependencies
-  rclcpp
-  knowledge_graph
-)
-
 include_directories(include)
 
 add_library(graph_terminal SHARED
   src/knowledge_graph_terminal/terminal.cpp)
-ament_target_dependencies(graph_terminal ${dependencies})
+target_link_libraries(graph_terminal
+  rclcpp::rclcpp
+  knowledge_graph::knowledge_graph
+)
 
 add_executable(${PROJECT_NAME}
   src/terminal_node.cpp)
-ament_target_dependencies(${PROJECT_NAME} ${dependencies})
-target_link_libraries(${PROJECT_NAME} graph_terminal readline)
+target_link_libraries(${PROJECT_NAME}
+  graph_terminal
+  rclcpp::rclcpp
+  knowledge_graph::knowledge_graph
+  readline
+)
 
 install(TARGETS
   graph_terminal
