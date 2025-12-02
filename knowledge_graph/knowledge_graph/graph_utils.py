@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-@file graph_utils.py
-@brief Utility functions for Knowledge Graph operations.
-
-This module provides helper functions for creating and manipulating
-graph nodes, edges, content, and properties.
-"""
-
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from knowledge_graph_msgs.msg import Node, Edge, Content, Property

@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-@file knowledge_graph.py
-@brief Knowledge Graph implementation for ROS 2.
-
-This module provides a singleton KnowledgeGraph class that manages
-a distributed graph of nodes and edges with synchronization capabilities.
-"""
-
 from typing import List, Optional, Union
 from threading import Lock, RLock
 
