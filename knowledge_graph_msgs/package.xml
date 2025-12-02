@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>knowledge_graph_msgs</name>
-  <version>2.0.0</version>
+  <version>2.1.0</version>
   <description>Messages for the knowledge graph</description>
   <maintainer email="mgons@unileon.es">Miguel Ángel González Santamarta</maintainer>
   <license>Apache License, Version 2.0</license>
