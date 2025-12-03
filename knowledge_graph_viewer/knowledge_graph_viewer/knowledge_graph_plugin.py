@@ -120,15 +120,15 @@ class KnowledgeGraphPlugin(Plugin):
         self._updateTimer.start(10)
 
     def do_update(self):
-        # print("Spinnning")
-        rclpy.spin_once(self._knowledge_graph, timeout_sec=0.01)
-        # print("Spinned")
+        try:
+            rclpy.spin_once(self._knowledge_graph, timeout_sec=0.01)
+            self._update_knowledge_graph()
 
-        self._update_knowledge_graph()
-
-        self._updateTimer = QtCore.QTimer()
-        self._updateTimer.timeout.connect(self.do_update)
-        self._updateTimer.start(10)
+            self._updateTimer = QtCore.QTimer()
+            self._updateTimer.timeout.connect(self.do_update)
+            self._updateTimer.start(10)
+        except Exception as e:
+            pass
 
     def _update_knowledge_graph(self):
         self._refresh_knowledge_graph()
