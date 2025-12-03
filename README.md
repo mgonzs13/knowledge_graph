@@ -62,7 +62,7 @@ colcon test-result --verbose
 class NodeA : public rclcpp::Node {
 public:
   NodeA() : rclcpp::Node("node_a") {
-    this->graph_ = KnowledgeGraph::get_instance(shared_from_this());
+    this->graph_ = KnowledgeGraph(shared_from_this());
   }
 
 private:
@@ -90,7 +90,7 @@ from knowledge_graph import KnowledgeGraph
 class NodeA(Node):
   def __init__(self) -> None:
     super().__init__("node_a")
-    graph = KnowledgeGraph.get_instance(self)
+    graph = KnowledgeGraph(self)
 
 
 def master():
