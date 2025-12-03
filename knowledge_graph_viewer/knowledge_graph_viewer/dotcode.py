@@ -113,7 +113,7 @@ class KnowledgeGraphDotcodeGenerator:
         @param cluster_namespaces_level: if > 0 places box around members of same namespace
                (TODO: multiple namespace layers)
         @param accumulate_actions: if true each 5 action topic graph nodes are shown as single graph node
-        @return: dotcode generated from graph singleton
+        @return: dotcode generated from graph
         @rtype: str
         """
         dotgraph = self.generate_dotgraph(

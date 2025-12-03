@@ -69,7 +69,6 @@ void KnowledgeGraph::publish_update(
     const std::optional<knowledge_graph_msgs::msg::Node> &node,
     const std::optional<knowledge_graph_msgs::msg::Edge> &edge,
     const std::string &removed_node) {
-
   knowledge_graph_msgs::msg::GraphUpdate update_msg;
   update_msg.stamp = this->provided_node->get_clock()->now();
   update_msg.node_id = this->graph_id;
@@ -91,7 +90,6 @@ void KnowledgeGraph::publish_update(
 
 std::vector<knowledge_graph_msgs::msg::Edge>
 KnowledgeGraph::filter_edges(const EdgePredicate &predicate) const {
-
   std::shared_lock<std::shared_mutex> lock(this->graph_mutex);
   std::vector<knowledge_graph_msgs::msg::Edge> result;
   std::copy_if(this->graph->edges.begin(), this->graph->edges.end(),
@@ -158,8 +156,7 @@ bool KnowledgeGraph::exist_node(const std::string &node) {
 }
 
 std::optional<knowledge_graph_msgs::msg::Node>
-KnowledgeGraph::get_node(const std::string &node) const {
-
+KnowledgeGraph::get_node(const std::string &node) {
   std::shared_lock<std::shared_mutex> lock(this->graph_mutex);
   auto it =
       std::find_if(this->graph->nodes.begin(), this->graph->nodes.end(),
@@ -170,7 +167,7 @@ KnowledgeGraph::get_node(const std::string &node) const {
   return {};
 }
 
-const std::vector<std::string> KnowledgeGraph::get_node_names() const {
+const std::vector<std::string> KnowledgeGraph::get_node_names() {
   std::shared_lock<std::shared_mutex> lock(this->graph_mutex);
   std::vector<std::string> ret;
   ret.reserve(this->graph->nodes.size());
@@ -220,27 +217,27 @@ bool KnowledgeGraph::remove_edge(const knowledge_graph_msgs::msg::Edge &edge,
 
 std::vector<knowledge_graph_msgs::msg::Edge>
 KnowledgeGraph::get_edges(const std::string &source,
-                          const std::string &target) const {
+                          const std::string &target) {
   return this->filter_edges([&source, &target](const auto &edge) {
     return edge.source_node == source && edge.target_node == target;
   });
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_edges(const std::string &edge_class) const {
+KnowledgeGraph::get_edges(const std::string &edge_class) {
   return this->filter_edges([&edge_class](const auto &edge) {
     return edge.edge_class == edge_class;
   });
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_out_edges(const std::string &source) const {
+KnowledgeGraph::get_out_edges(const std::string &source) {
   return this->filter_edges(
       [&source](const auto &edge) { return edge.source_node == source; });
 }
 
 std::vector<knowledge_graph_msgs::msg::Edge>
-KnowledgeGraph::get_in_edges(const std::string &target) const {
+KnowledgeGraph::get_in_edges(const std::string &target) {
   return this->filter_edges(
       [&target](const auto &edge) { return edge.target_node == target; });
 }
@@ -389,7 +386,6 @@ void KnowledgeGraph::update_callback(
         msg->target_node == this->graph_id) {
       this->reqsync_timer->cancel();
       this->update_graph(msg->graph);
-
     } else if (operation == knowledge_graph_msgs::msg::GraphUpdate::REQSYNC) {
       // Respond with current graph state
       knowledge_graph_msgs::msg::GraphUpdate out_msg;

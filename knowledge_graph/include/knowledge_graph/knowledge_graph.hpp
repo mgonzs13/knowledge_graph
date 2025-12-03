@@ -46,8 +46,6 @@ using EdgePredicate =
  * across multiple ROS 2 nodes. It supports adding, updating, and removing
  * nodes and edges, with automatic synchronization between instances.
  *
- * The class implements the Singleton pattern to ensure a single instance
- * per ROS 2 node, and uses publisher/subscriber mechanisms for graph updates.
  */
 class KnowledgeGraph {
 public:
@@ -78,28 +76,6 @@ public:
    */
   ~KnowledgeGraph() = default;
 
-  /// @brief Deleted copy constructor to enforce singleton pattern.
-  KnowledgeGraph(KnowledgeGraph &other) = delete;
-
-  /// @brief Deleted copy assignment operator to enforce singleton pattern.
-  void operator=(const KnowledgeGraph &) = delete;
-
-  /**
-   * @brief Gets the singleton instance of KnowledgeGraph.
-   * @param provided_node Shared pointer to the ROS 2 node.
-   * @return Shared pointer to the KnowledgeGraph singleton instance.
-   */
-  static std::shared_ptr<KnowledgeGraph>
-  get_instance(rclcpp::Node::SharedPtr provided_node);
-
-  /**
-   * @brief Gets the singleton instance of KnowledgeGraph for lifecycle nodes.
-   * @param provided_node Shared pointer to the lifecycle node.
-   * @return Shared pointer to the KnowledgeGraph singleton instance.
-   */
-  static std::shared_ptr<KnowledgeGraph>
-  get_instance(rclcpp_lifecycle::LifecycleNode::SharedPtr provided_node);
-
   /**
    * @brief Removes a node from the graph.
    * @param node The name of the node to remove.
@@ -122,13 +98,7 @@ public:
    * @return An optional containing the node if found, empty otherwise.
    */
   std::optional<knowledge_graph_msgs::msg::Node>
-  get_node(const std::string &node) const;
-
-  /**
-   * @brief Gets the names of all nodes in the graph.
-   * @return Vector of node names.
-   */
-  const std::vector<std::string> get_node_names() const;
+  get_node(const std::string &node);
 
   /**
    * @brief Removes an edge from the graph.
@@ -146,7 +116,7 @@ public:
    * @return Vector of edges connecting the source and target nodes.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_edges(const std::string &source, const std::string &target) const;
+  get_edges(const std::string &source, const std::string &target);
 
   /**
    * @brief Gets all edges of a specific class.
@@ -154,7 +124,7 @@ public:
    * @return Vector of edges matching the specified class.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_edges(const std::string &edge_class) const;
+  get_edges(const std::string &edge_class);
 
   /**
    * @brief Gets all outgoing edges from a node.
@@ -162,7 +132,7 @@ public:
    * @return Vector of edges originating from the source node.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_out_edges(const std::string &source) const;
+  get_out_edges(const std::string &source);
 
   /**
    * @brief Gets all incoming edges to a node.
@@ -170,7 +140,7 @@ public:
    * @return Vector of edges pointing to the target node.
    */
   std::vector<knowledge_graph_msgs::msg::Edge>
-  get_in_edges(const std::string &target) const;
+  get_in_edges(const std::string &target);
 
   /**
    * @brief Gets all nodes in the graph.
@@ -183,6 +153,12 @@ public:
    * @return Vector copy of all edges (thread-safe).
    */
   std::vector<knowledge_graph_msgs::msg::Edge> get_edges() const;
+
+  /**
+   * @brief Gets the names of all nodes in the graph.
+   * @return Vector of node names.
+   */
+  const std::vector<std::string> get_node_names();
 
   /**
    * @brief Gets the number of edges in the graph.
@@ -271,12 +247,6 @@ protected:
   filter_edges(const EdgePredicate &predicate) const;
 
 private:
-  /// @brief Singleton instance pointer.
-  static std::shared_ptr<KnowledgeGraph> pinstance;
-
-  /// @brief Mutex for thread-safe singleton access.
-  static std::mutex mutex;
-
   /// @brief Publisher for graph update messages.
   rclcpp::Publisher<knowledge_graph_msgs::msg::GraphUpdate>::SharedPtr
       update_pub;
@@ -291,30 +261,6 @@ private:
   /// @brief Start time for synchronization timeout.
   rclcpp::Time start_time;
 };
-
-/// @brief Singleton instance pointer initialization.
-inline std::shared_ptr<KnowledgeGraph> KnowledgeGraph::pinstance{nullptr};
-
-/// @brief Mutex for thread-safe singleton access initialization.
-inline std::mutex KnowledgeGraph::mutex;
-
-inline std::shared_ptr<KnowledgeGraph>
-KnowledgeGraph::get_instance(rclcpp::Node::SharedPtr provided_node) {
-  std::lock_guard<std::mutex> lock(mutex);
-  if (pinstance == nullptr) {
-    pinstance = std::make_shared<KnowledgeGraph>(provided_node);
-  }
-  return pinstance;
-}
-
-inline std::shared_ptr<KnowledgeGraph> KnowledgeGraph::get_instance(
-    rclcpp_lifecycle::LifecycleNode::SharedPtr provided_node) {
-  std::lock_guard<std::mutex> lock(mutex);
-  if (pinstance == nullptr) {
-    pinstance = std::make_shared<KnowledgeGraph>(provided_node);
-  }
-  return pinstance;
-}
 
 } // namespace knowledge_graph
 

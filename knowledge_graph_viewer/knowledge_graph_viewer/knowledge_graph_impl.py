@@ -43,7 +43,7 @@ class KnowledgeGraphImpl(rclpy.node.Node):
     def __init__(self):
         super().__init__("rqt_knowledge_graph")
 
-        self.graph = KnowledgeGraph.get_instance(self)
+        self.graph = KnowledgeGraph(self)
 
     def __repr__(self):
         ret = "Nodes: " + str(len(self.graph.nodes)) + "\n"

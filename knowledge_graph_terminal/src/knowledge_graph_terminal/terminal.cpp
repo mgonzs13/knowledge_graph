@@ -133,8 +133,8 @@ Terminal::Terminal()
                                            rclcpp::Clock().now().seconds()))) {}
 
 void Terminal::run_console() {
-  this->graph_ =
-      knowledge_graph::KnowledgeGraph::get_instance(shared_from_this());
+  this->graph_ = std::make_shared<knowledge_graph::KnowledgeGraph>(
+      this->shared_from_this());
   std::string line;
   bool success = true;
 
@@ -167,6 +167,7 @@ void Terminal::run_console() {
   }
 
   std::cout << "Finishing..." << std::endl;
+  this->graph_ = nullptr;
 }
 // LCOV_EXCL_STOP
 

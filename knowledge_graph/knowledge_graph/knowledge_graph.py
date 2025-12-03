@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+@file knowledge_graph.py
+@brief Knowledge Graph implementation for ROS 2.
+"""
+
 from typing import List, Optional, Union
 from threading import Lock, RLock
 
@@ -27,15 +32,12 @@ from knowledge_graph_msgs.msg import GraphUpdate
 
 class KnowledgeGraph:
     """
-    @brief Singleton class for managing a distributed knowledge graph.
+    @brief Class for managing a distributed knowledge graph.
 
     The KnowledgeGraph class provides functionality for managing nodes and edges
     in a graph structure with support for distributed synchronization across
     multiple ROS 2 nodes.
     """
-
-    _instance: "KnowledgeGraph" = None
-    _lock: Lock = Lock()
 
     # QoS profile for graph updates
     _UPDATE_QOS = QoSProfile(
@@ -44,29 +46,12 @@ class KnowledgeGraph:
         reliability=QoSReliabilityPolicy.RELIABLE,
     )
 
-    @staticmethod
-    def get_instance(node: Node) -> "KnowledgeGraph":
-        """
-        @brief Gets the singleton instance of KnowledgeGraph.
-
-        @param node The ROS 2 node to use for communication.
-        @return The singleton KnowledgeGraph instance.
-        """
-        with KnowledgeGraph._lock:
-            if KnowledgeGraph._instance is None:
-                KnowledgeGraph._instance = KnowledgeGraph(node)
-            return KnowledgeGraph._instance
-
     def __init__(self, provided_node: Node) -> None:
         """
         @brief Initializes the KnowledgeGraph.
 
         @param provided_node The ROS 2 node to use for communication.
-        @raise Exception If an instance already exists (Singleton pattern).
         """
-        if KnowledgeGraph._instance is not None:
-            raise Exception("This class is a Singleton")
-
         self.node = provided_node
         self.graph = GraphMsg()
         self.graph_id = self.node.get_name()
