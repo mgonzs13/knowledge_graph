@@ -38,19 +38,19 @@ class KnowledgeGraphDbNode(Node):
         self.declare_parameter("db_file", "knowledge_graph.db")
         db_file = self.get_parameter("db_file").get_parameter_value().string_value
 
-        self.graph = KnowledgeGraph.get_instance(self)
+        self.graph = KnowledgeGraph(self)
 
         self.sqlite_conn = self.create_connection(db_file)
         self.create_tables()
         self.load_db()
 
-        self.graph.update_node = self.update_node
-        self.graph.remove_node = self.remove_node
-        self.graph.update_edge = self.update_edge
-        self.graph.remove_edge = self.remove_edge
+        self.graph._update_node_internal = self.update_node
+        self.graph._remove_node_internal = self.remove_node
+        self.graph._update_edge_internal = self.update_edge
+        self.graph._remove_edge_internal = self.remove_edge
 
         self.get_logger().info("Knowledge Graph DB Node Started")
-        self.graph.reqsync_timer_callback()
+        self.graph._reqsync_timer_callback()
 
     def create_connection(self, db_file: str) -> sqlite3.Connection:
         try:
@@ -275,7 +275,7 @@ class KnowledgeGraphDbNode(Node):
     # graph methods
     #
     def update_node(self, node: NodeMsg, sync: bool = True) -> None:
-        updated = KnowledgeGraph.update_node(self.graph, node, sync)
+        updated = KnowledgeGraph._update_node_internal(self.graph, node, sync)
 
         if updated:
             if self.exist_sql_node(node):
@@ -287,7 +287,7 @@ class KnowledgeGraphDbNode(Node):
 
     def remove_node(self, node: str, sync: bool = True) -> bool:
         edges = self.graph.graph.edges.copy()
-        removed = KnowledgeGraph.remove_node(self.graph, node, sync)
+        removed = KnowledgeGraph._remove_node_internal(self.graph, node, sync)
 
         if removed:
             self.remove_sql_node(node)
@@ -299,7 +299,7 @@ class KnowledgeGraphDbNode(Node):
         return removed
 
     def update_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
-        updated = KnowledgeGraph.update_edge(self.graph, edge, sync)
+        updated = KnowledgeGraph._update_edge_internal(self.graph, edge, sync)
 
         if updated:
             if self.exist_sql_edge(edge):
@@ -310,18 +310,21 @@ class KnowledgeGraphDbNode(Node):
         return updated
 
     def remove_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
-        removed = KnowledgeGraph.remove_edge(self.graph, edge, sync)
+        removed = KnowledgeGraph._remove_edge_internal(self.graph, edge, sync)
         if removed:
             self.remove_sql_edge(edge)
         return removed
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = KnowledgeGraphDbNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.init(args=args)
+        node = KnowledgeGraphDbNode()
+        rclpy.spin(node)
+        node.destroy_node()
+        rclpy.shutdown()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
