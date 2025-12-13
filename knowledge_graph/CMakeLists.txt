@@ -36,6 +36,8 @@ install(TARGETS
 
 ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(rclcpp rclcpp_lifecycle knowledge_graph_msgs)
+ament_export_include_directories(include)
+ament_export_libraries(${PROJECT_NAME})
 ament_python_install_package(${PROJECT_NAME})
 
 # Testing
