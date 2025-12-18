@@ -143,53 +143,37 @@ class KnowledgeGraph(Graph):
         if author_id == self._graph_id:
             return
 
-        with self._graph_mutex:
             # Check for out-of-order updates
-            if ts < self._last_ts and operation not in (
-                GraphUpdate.REQSYNC,
-                GraphUpdate.SYNC,
-            ):
-                self._node.get_logger().warn(
-                    f"UNORDERED UPDATE [{operation}] "
-                    f"{self._last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
-                )
+        if ts < self._last_ts and operation not in (
+            GraphUpdate.REQSYNC,
+            GraphUpdate.SYNC,
+        ):
+            self._node.get_logger().warn(
+                f"UNORDERED UPDATE [{operation}] "
+                f"{self._last_ts.seconds_nanoseconds()[0]} > {ts.seconds_nanoseconds()[0]}"
+            )
 
+        with self._graph_mutex:
             # Process update based on element type
             if element == GraphUpdate.NODE:
                 if operation == GraphUpdate.UPDATE:
-                    if msg.nodes:
-                        for node_msg in msg.nodes:
-                            node = Node(msg=node_msg)
-                            self.update_node(node)
-                    elif msg.node:
-                        node = Node(msg=msg.node)
-                        self.update_node(node)
+                    for node_msg in msg.nodes:
+                        node = Node(msg=node_msg)
+                        Graph.update_node(self, node)
                 elif operation == GraphUpdate.REMOVE:
-                    if msg.nodes:
-                        for node_msg in msg.nodes:
-                            node = Node(msg=node_msg)
-                            self.remove_node(node)
-                    elif msg.node:
-                        node = Node(msg=msg.node)
-                        self.remove_node(node)
+                    for node_msg in msg.nodes:
+                        node = Node(msg=node_msg)
+                        Graph.remove_node(self, node)
 
             elif element == GraphUpdate.EDGE:
                 if operation == GraphUpdate.UPDATE:
-                    if msg.edges:
-                        for edge_msg in msg.edges:
-                            edge = Edge(msg=edge_msg)
-                            self.update_edge(edge)
-                    elif msg.edge:
-                        edge = Edge(msg=msg.edge)
-                        self.update_edge(edge)
+                    for edge_msg in msg.edges:
+                        edge = Edge(msg=edge_msg)
+                        Graph.update_edge(self, edge)
                 elif operation == GraphUpdate.REMOVE:
-                    if msg.edges:
-                        for edge_msg in msg.edges:
-                            edge = Edge(msg=edge_msg)
-                            self.remove_edge(edge)
-                    elif msg.edge:
-                        edge = Edge(msg=msg.edge)
-                        self.remove_edge(edge)
+                    for edge_msg in msg.edges:
+                        edge = Edge(msg=edge_msg)
+                        Graph.remove_edge(edge)
 
             elif element == GraphUpdate.GRAPH:
                 remote_graph = Graph(msg=msg.graph)

@@ -113,6 +113,7 @@ void KnowledgeGraph::update_callback(
                 operation, this->last_ts.seconds(), rclcpp::Time(ts).seconds());
   }
 
+  std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
   switch (element) {
   case knowledge_graph_msgs::msg::GraphUpdate::NODE: {
     for (const auto &node_msg : msg->nodes) {
