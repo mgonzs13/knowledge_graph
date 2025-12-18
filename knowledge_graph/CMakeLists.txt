@@ -45,4 +45,29 @@ ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_python_install_package(${PROJECT_NAME})
 
+# Testing
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_pytest REQUIRED)
+
+  # C++ Tests
+  ament_add_gtest(test_properties test/test_properties.cpp)
+  target_link_libraries(test_properties ${PROJECT_NAME})
+
+  ament_add_gtest(test_node test/test_node.cpp)
+  target_link_libraries(test_node ${PROJECT_NAME})
+
+  ament_add_gtest(test_edge test/test_edge.cpp)
+  target_link_libraries(test_edge ${PROJECT_NAME})
+
+  ament_add_gtest(test_graph test/test_graph.cpp)
+  target_link_libraries(test_graph ${PROJECT_NAME})
+
+  # Python Tests
+  ament_add_pytest_test(test_properties_py test/test_properties.py)
+  ament_add_pytest_test(test_node_py test/test_node.py)
+  ament_add_pytest_test(test_edge_py test/test_edge.py)
+  ament_add_pytest_test(test_graph_py test/test_graph.py)
+endif()
+
 ament_package()

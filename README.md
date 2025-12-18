@@ -108,103 +108,207 @@ if __name__ == "__master__":
 
 ### C++
 
-The complete C++ API of `knowledge_graph::KnowledgeGraph` is at [knowledge_graph/include/knowledge_graph/knowledge_graph.hpp](knowledge_graph/include/knowledge_graph/knowledge_graph.hpp), but it is masterly:
+The complete C++ API of `knowledge_graph::KnowledgeGraph` (extends `knowledge_graph::graph::Graph`) is at [knowledge_graph/include/knowledge_graph/knowledge_graph.hpp](knowledge_graph/include/knowledge_graph/knowledge_graph.hpp). The main API functions are:
 
-- Nodes
-
-```cpp
-bool update_node(const knowledge_graph_msgs::msg::Node &node, bool sync = true);
-```
+#### Node Operations
 
 ```cpp
-bool remove_node(const std::string &node, bool sync = true);
+// Create a new node in the graph
+Node create_node(const std::string &name, const std::string &type);
+
+// Check if a node exists
+bool has_node(const std::string &name) const;
+
+// Get number of nodes
+int get_num_nodes() const;
+
+// Get all nodes
+std::vector<Node> get_nodes() const;
+
+// Get a node by name (throws if not found)
+Node get_node(const std::string &name) const;
+
+// Update a node (adds if not exists)
+void update_node(const Node &node);
+
+// Update multiple nodes
+void update_nodes(const std::vector<Node> &nodes);
+
+// Remove a node
+bool remove_node(const Node &node);
+
+// Remove multiple nodes
+void remove_nodes(const std::vector<Node> &nodes);
 ```
+
+#### Edge Operations
 
 ```cpp
-bool exist_node(const std::string &node);
+// Create a new edge
+Edge create_edge(const std::string &type, const std::string &source_node, const std::string &target_node);
+
+// Check if an edge exists
+bool has_edge(const std::string &type, const std::string &source_node, const std::string &target_node) const;
+
+// Get number of edges
+int get_num_edges() const;
+
+// Get all edges
+std::vector<Edge> get_edges() const;
+
+// Get edges from a specific source node
+std::vector<Edge> get_edges_from_node(const std::string &source_node) const;
+
+// Get edges to a specific target node
+std::vector<Edge> get_edges_to_node(const std::string &target_node) const;
+
+// Get edges between specific nodes
+std::vector<Edge> get_edges_between_nodes(const std::string &source_node, const std::string &target_node) const;
+
+// Get edges by type
+std::vector<Edge> get_edges_by_type(const std::string &type) const;
+
+// Get edges from node by type
+std::vector<Edge> get_edges_from_node_by_type(const std::string &type, const std::string &source_node) const;
+
+// Get edges to node by type
+std::vector<Edge> get_edges_to_node_by_type(const std::string &type, const std::string &target_node) const;
+
+// Get a specific edge (throws if not found)
+Edge get_edge(const std::string &type, const std::string &source_node, const std::string &target_node) const;
+
+// Update an edge (adds if not exists)
+void update_edge(const Edge &edge);
+
+// Update multiple edges
+void update_edges(const std::vector<Edge> &edges);
+
+// Remove an edge
+bool remove_edge(const Edge &edge);
+
+// Remove multiple edges
+void remove_edges(const std::vector<Edge> &edges);
 ```
+
+#### Node/Edge Properties
+
+Nodes and edges inherit from `PropertiesContainer`, providing property management:
 
 ```cpp
-std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string &node);
+// Set a property value
+template <typename T>
+void set_property(const std::string &key, const T &value);
+
+// Get a property value
+template <typename T>
+T get_property(const std::string &key) const;
+
+// Check if a property exists
+bool has_property(const std::string &key) const;
 ```
 
-```cpp
-std::optional<knowledge_graph_msgs::msg::Node> get_node(const std::string &node);
-```
-
-- Edges
-
-```cpp
-bool update_edge(const knowledge_graph_msgs::msg::Edge &edge, bool sync = true);
-```
-
-```cpp
-bool remove_edge(const knowledge_graph_msgs::msg::Edge &edge, bool sync = true);
-```
-
-```cpp
-std::vector<knowledge_graph_msgs::msg::Edge> get_edges(const std::string &source, const std::string &target)
-```
-
-```cpp
-std::vector<knowledge_graph_msgs::msg::Edge> get_edges(const std::string &edge_class)
-```
-
-```cpp
-std::vector<knowledge_graph_msgs::msg::Edge> get_out_edges(const std::string &source)
-```
-
-```cpp
-std::vector<knowledge_graph_msgs::msg::Edge> get_in_edges(const std::string &target)
-```
+Supported property types: `bool`, `int`, `float`, `double`, `std::string`, and vectors of these types.
 
 ### Python
 
-The complete Ptyhon API of `KnowledgeGraph` is at [knowledge_graph/knowledge_graph/knowledge_graph.py](knowledge_graph/knowledge_graph/knowledge_graph.py), but it is masterly:
+The complete Python API of `KnowledgeGraph` (extends `Graph`) is at [knowledge_graph/knowledge_graph/knowledge_graph.py](knowledge_graph/knowledge_graph/knowledge_graph.py). The main API functions are:
 
-- Nodes
-
-```python
-def update_node(self, node: Node, sync: bool = True) -> bool
-```
+#### Node Operations
 
 ```python
-def remove_node(self, node: str, sync: bool = True) -> bool
+# Create a new node in the graph
+def create_node(self, name: str, type_: str) -> Node
+
+# Check if a node exists
+def has_node(self, name: str) -> bool
+
+# Get number of nodes
+def get_num_nodes(self) -> int
+
+# Get all nodes
+def get_nodes(self) -> List[Node]
+
+# Get a node by name (raises RuntimeError if not found)
+def get_node(self, name: str) -> Node
+
+# Update a node (adds if not exists)
+def update_node(self, node: Node) -> None
+
+# Update multiple nodes
+def update_nodes(self, nodes: List[Node]) -> None
+
+# Remove a node
+def remove_node(self, node: Node) -> bool
+
+# Remove multiple nodes
+def remove_nodes(self, nodes: List[Node]) -> None
 ```
+
+#### Edge Operations
 
 ```python
-def exist_node(self, node: str) -> bool
+# Create a new edge
+def create_edge(self, type_: str, source_node: str, target_node: str) -> Edge
+
+# Check if an edge exists
+def has_edge(self, type: str, source_node: str, target_node: str) -> bool
+
+# Get number of edges
+def get_num_edges(self) -> int
+
+# Get all edges
+def get_edges(self) -> List[Edge]
+
+# Get edges from a specific source node
+def get_edges_from_node(self, source_node: str) -> List[Edge]
+
+# Get edges to a specific target node
+def get_edges_to_node(self, target_node: str) -> List[Edge]
+
+# Get edges between specific nodes
+def get_edges_between_nodes(self, source_node: str, target_node: str) -> List[Edge]
+
+# Get edges by type
+def get_edges_by_type(self, type: str) -> List[Edge]
+
+# Get edges from node by type
+def get_edges_from_node_by_type(self, type: str, source_node: str) -> List[Edge]
+
+# Get edges to node by type
+def get_edges_to_node_by_type(self, type: str, target_node: str) -> List[Edge]
+
+# Get a specific edge (raises RuntimeError if not found)
+def get_edge(self, type: str, source_node: str, target_node: str) -> Edge
+
+# Update an edge (adds if not exists)
+def update_edge(self, edge: Edge) -> None
+
+# Update multiple edges
+def update_edges(self, edges: List[Edge]) -> None
+
+# Remove an edge
+def remove_edge(self, edge: Edge) -> bool
+
+# Remove multiple edges
+def remove_edges(self, edges: List[Edge]) -> None
 ```
+
+#### Node/Edge Properties
+
+Nodes and edges provide property management:
 
 ```python
-def get_node(self, node: str) -> Node
+# Set a property value
+def set_property(self, key: str, value: Any) -> None
+
+# Get a property value
+def get_property(self, key: str) -> Any
+
+# Check if a property exists
+def has_property(self, key: str) -> bool
 ```
 
-```python
-def get_nodes(self) -> List[Node]:
-```
-
-- Edges
-
-```python
-def update_edge(self, edge: Edge, sync: bool = True) -> bool
-```
-
-```python
-def remove_edge(self, edge: Edge, sync: bool = True) -> bool
-```
-
-```python
-def get_edges(self, source: str = None, target: str = None, edge_class: str = None) -> List[Edge]:
-```
-
-```python
-def get_out_edges(self, source: str) -> List[Edge]
-```
-
-```python
-def get_in_edges(self, target: str) -> List[Edge]
-```
+Supported property types: `bool`, `int`, `float`, `str`, and lists of these types.
 
 ## Demos
 

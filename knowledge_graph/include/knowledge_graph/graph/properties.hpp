@@ -71,7 +71,32 @@ public:
    * @param key The key of the property to set.
    * @param value The value to set.
    */
-  template <typename T> void set(const std::string &key, const T &value);
+  template <typename T> void set(const std::string &key, const T &value) {
+
+    if (typeid(T).name() != typeid(bool).name() &&
+        typeid(T).name() != typeid(int).name() &&
+        typeid(T).name() != typeid(float).name() &&
+        typeid(T).name() != typeid(double).name() &&
+        typeid(T).name() != typeid(std::string).name() &&
+        typeid(T).name() != typeid(std::vector<bool>).name() &&
+        typeid(T).name() != typeid(std::vector<int>).name() &&
+        typeid(T).name() != typeid(std::vector<float>).name() &&
+        typeid(T).name() != typeid(std::vector<double>).name() &&
+        typeid(T).name() != typeid(std::vector<std::string>).name()) {
+      throw std::runtime_error("Unsupported property type for key: " + key);
+    }
+
+    if (this->has(key)) {
+      if (this->type(key) != typeid(T).name()) {
+        throw std::runtime_error("Type mismatch for key: " + key);
+      }
+
+      *std::static_pointer_cast<T>(this->properties_[key]) = value;
+    } else {
+      this->properties_[key] = std::make_shared<T>(value);
+      this->registry_[key] = typeid(T).name();
+    }
+  }
 
   /**
    * @brief Get the value of a property with the given key.
@@ -79,7 +104,13 @@ public:
    * @param key The key of the property to retrieve.
    * @return The value of the property.
    */
-  template <typename T> T get(const std::string &key) const;
+  template <typename T> T get(const std::string &key) const {
+    auto it = this->properties_.find(key);
+    if (it != this->properties_.end()) {
+      return *std::static_pointer_cast<T>(it->second);
+    }
+    throw std::runtime_error("Property not found: " + key);
+  }
 
   /**
    * @brief Convert a property to a Property message.

@@ -68,42 +68,6 @@ std::string Properties::type(const std::string &key) const {
   throw std::runtime_error("Property not found: " + key);
 }
 
-template <typename T>
-void Properties::set(const std::string &key, const T &value) {
-
-  if (typeid(T).name() != typeid(bool).name() &&
-      typeid(T).name() != typeid(int).name() &&
-      typeid(T).name() != typeid(float).name() &&
-      typeid(T).name() != typeid(double).name() &&
-      typeid(T).name() != typeid(std::string).name() &&
-      typeid(T).name() != typeid(std::vector<bool>).name() &&
-      typeid(T).name() != typeid(std::vector<int>).name() &&
-      typeid(T).name() != typeid(std::vector<float>).name() &&
-      typeid(T).name() != typeid(std::vector<double>).name() &&
-      typeid(T).name() != typeid(std::vector<std::string>).name()) {
-    throw std::runtime_error("Unsupported property type for key: " + key);
-  }
-
-  if (this->has(key)) {
-    if (this->type(key) != typeid(T).name()) {
-      throw std::runtime_error("Type mismatch for key: " + key);
-    }
-
-    *std::static_pointer_cast<T>(this->properties_[key]) = value;
-  } else {
-    this->properties_[key] = std::make_shared<T>(value);
-    this->registry_[key] = typeid(T).name();
-  }
-}
-
-template <typename T> T Properties::get(const std::string &key) const {
-  auto it = this->properties_.find(key);
-  if (it != this->properties_.end()) {
-    return *std::static_pointer_cast<T>(it->second);
-  }
-  throw std::runtime_error("Property not found: " + key);
-}
-
 knowledge_graph_msgs::msg::Property
 Properties::to_msg(const std::string &key) const {
   if (!this->has(key)) {
@@ -115,34 +79,44 @@ Properties::to_msg(const std::string &key) const {
 
   const std::string &type_name = this->type(key);
   if (type_name == typeid(bool).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::BOOL;
     prop_msg.value.bool_value =
         *std::static_pointer_cast<bool>(this->properties_.at(key));
   } else if (type_name == typeid(int).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::INT;
     prop_msg.value.int_value =
         *std::static_pointer_cast<int>(this->properties_.at(key));
   } else if (type_name == typeid(float).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::FLOAT;
     prop_msg.value.float_value =
         *std::static_pointer_cast<float>(this->properties_.at(key));
   } else if (type_name == typeid(double).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::DOUBLE;
     prop_msg.value.double_value =
         *std::static_pointer_cast<double>(this->properties_.at(key));
   } else if (type_name == typeid(std::string).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::STRING;
     prop_msg.value.string_value =
         *std::static_pointer_cast<std::string>(this->properties_.at(key));
   } else if (type_name == typeid(std::vector<bool>).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::VBOOL;
     prop_msg.value.bool_vector =
         *std::static_pointer_cast<std::vector<bool>>(this->properties_.at(key));
   } else if (type_name == typeid(std::vector<int>).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::VINT;
     prop_msg.value.int_vector =
         *std::static_pointer_cast<std::vector<int>>(this->properties_.at(key));
   } else if (type_name == typeid(std::vector<float>).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::VFLOAT;
     prop_msg.value.float_vector = *std::static_pointer_cast<std::vector<float>>(
         this->properties_.at(key));
   } else if (type_name == typeid(std::vector<double>).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::VDOUBLE;
     prop_msg.value.double_vector =
         *std::static_pointer_cast<std::vector<double>>(
             this->properties_.at(key));
   } else if (type_name == typeid(std::vector<std::string>).name()) {
+    prop_msg.value.type = knowledge_graph_msgs::msg::Content::VSTRING;
     prop_msg.value.string_vector =
         *std::static_pointer_cast<std::vector<std::string>>(
             this->properties_.at(key));
