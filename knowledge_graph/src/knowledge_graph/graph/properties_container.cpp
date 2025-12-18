@@ -24,16 +24,6 @@ PropertiesContainer::PropertiesContainer(
     const std::vector<knowledge_graph_msgs::msg::Property> &msg)
     : properties_(msg) {}
 
-template <typename T>
-void PropertiesContainer::set_property(const std::string &key, const T &value) {
-  this->properties_.set<T>(key, value);
-}
-
-template <typename T>
-T PropertiesContainer::get_property(const std::string &key) const {
-  return this->properties_.get<T>(key);
-}
-
 bool PropertiesContainer::has_property(const std::string &key) const {
   return this->properties_.has(key);
 }

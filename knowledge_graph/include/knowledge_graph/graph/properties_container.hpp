@@ -55,7 +55,9 @@ public:
    * @param value The value to set.
    */
   template <typename T>
-  void set_property(const std::string &key, const T &value);
+  void set_property(const std::string &key, const T &value) {
+    this->properties_.set<T>(key, value);
+  }
 
   /**
    * @brief Get the value of a property with the given key.
@@ -63,7 +65,9 @@ public:
    * @param key The key of the property to get.
    * @return The value of the property.
    */
-  template <typename T> T get_property(const std::string &key) const;
+  template <typename T> T get_property(const std::string &key) const {
+    return this->properties_.get<T>(key);
+  }
 
   /**
    * @brief Check if a property with the given key exists.
