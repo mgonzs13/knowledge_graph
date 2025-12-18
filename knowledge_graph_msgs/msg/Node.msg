@@ -1,4 +1,4 @@
-string node_name
-string node_class
+string name
+string type
 
 knowledge_graph_msgs/Property[] properties

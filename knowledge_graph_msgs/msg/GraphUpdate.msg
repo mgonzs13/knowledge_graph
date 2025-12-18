@@ -14,7 +14,6 @@ string target_node
 uint8 operation_type
 uint8 element_type
 
-string removed_node
-knowledge_graph_msgs/Node node
-knowledge_graph_msgs/Edge edge
+knowledge_graph_msgs/Node[] nodes
+knowledge_graph_msgs/Edge[] edges
 knowledge_graph_msgs/Graph graph

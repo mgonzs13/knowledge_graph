@@ -25,7 +25,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "knowledge_graph/graph_utils.hpp"
 #include "knowledge_graph_msgs/msg/edge.hpp"
 #include "knowledge_graph_msgs/msg/graph.hpp"
 #include "knowledge_graph_msgs/msg/graph_update.hpp"
@@ -233,17 +232,12 @@ void Terminal::process_add(std::vector<std::string> &command,
 void Terminal::process_add_node(std::vector<std::string> &command,
                                 std::ostringstream &os) {
   if (command.size() == 2) {
-    auto node = knowledge_graph::new_node(command[0], command[1]);
-    this->graph_->update_node(node);
+    if (!this->graph_->has_node(command[0])) {
+      this->graph_->create_node(command[0], command[1]);
+    }
   } else {
     os << "\tUsage: \n\t\tadd node [name] [type]" << std::endl;
   }
-}
-
-std::optional<knowledge_graph_msgs::msg::Edge>
-Terminal::get_edge(const std::string &edge_class, const std::string &source,
-                   const std::string &target) {
-  return knowledge_graph::new_edge(edge_class, source, target);
 }
 
 void Terminal::process_add_edge(std::vector<std::string> &command,
@@ -254,9 +248,8 @@ void Terminal::process_add_edge(std::vector<std::string> &command,
     const std::string &source = command[1];
     const std::string &target = command[2];
 
-    auto edge = this->get_edge(edge_class, source, target);
-    if (edge.has_value()) {
-      this->graph_->update_edge(edge.value());
+    if (!this->graph_->has_edge(edge_class, source, target)) {
+      this->graph_->create_edge(edge_class, source, target);
     } else {
       os << "Could not add the edge [" << command[0] << "] " << command[1]
          << " -> " << command[2] << std::endl;
@@ -286,8 +279,11 @@ void Terminal::process_remove(std::vector<std::string> &command,
 void Terminal::process_remove_node(std::vector<std::string> &command,
                                    std::ostringstream &os) {
   if (command.size() == 1) {
-    if (!this->graph_->remove_node(command[0])) {
-      os << "Could not remove the node [" << command[0] << "]" << std::endl;
+    if (this->graph_->has_node(command[0])) {
+      auto node = this->graph_->get_node(command[0]);
+      if (!this->graph_->remove_node(node)) {
+        os << "Could not remove the node [" << command[0] << "]" << std::endl;
+      }
     }
   } else {
     os << "\tUsage: \n\t\tremove node [name] [type]" << std::endl;
@@ -302,12 +298,12 @@ void Terminal::process_remove_edge(std::vector<std::string> &command,
     const std::string &source = command[1];
     const std::string &target = command[2];
 
-    auto edge = this->get_edge(edge_class, source, target);
-    if (edge.has_value()) {
-      this->graph_->remove_edge(edge.value());
-    } else {
-      os << "Could not remove the edge [" << command[0] << "] " << command[1]
-         << " -> " << command[2] << std::endl;
+    if (this->graph_->has_edge(edge_class, source, target)) {
+      auto edge = this->graph_->get_edge(edge_class, source, target);
+      if (!this->graph_->remove_edge(edge)) {
+        os << "Could not remove the edge [" << command[0] << "] " << command[1]
+           << " -> " << command[2] << std::endl;
+      }
     }
   } else {
     os << "\tUsage: \n\t\tremove edge [class] [source] [target]" << std::endl;
@@ -340,10 +336,9 @@ void Terminal::process_get(std::vector<std::string> &command,
 void Terminal::process_get_node(std::vector<std::string> &command,
                                 std::ostringstream &os) {
   if (command.size() == 1) {
-    const auto &node = this->graph_->get_node(command[0]);
-
-    if (node.has_value()) {
-      os << knowledge_graph::to_string(node.value()) << std::endl;
+    if (this->graph_->has_node(command[0])) {
+      auto node = this->graph_->get_node(command[0]);
+      os << node.to_string() << std::endl;
     } else {
       os << "node [" << command[0] << "] not found" << std::endl;
     }
@@ -355,14 +350,17 @@ void Terminal::process_get_node(std::vector<std::string> &command,
 void Terminal::process_get_edge(std::vector<std::string> &command,
                                 std::ostringstream &os) {
   if (command.size() == 3) {
-    auto edges = this->graph_->get_edges(command[0], command[1]);
 
-    os << "Edges: " << edges.size() << std::endl;
-    for (const auto &edge : edges) {
-      os << knowledge_graph::to_string(edge) << std::endl;
+    if (this->graph_->has_edge(command[0], command[1], command[2])) {
+      auto edge = this->graph_->get_edge(command[0], command[1], command[2]);
+      os << edge.to_string() << std::endl;
+    } else {
+      os << "edge [" << command[0] << "] " << command[1] << " -> " << command[2]
+         << " not found" << std::endl;
     }
+
   } else {
-    os << "\tUsage: \n\t\tget edge [source] [target]" << std::endl;
+    os << "\tUsage: \n\t\tget edge [type] [source] [target]" << std::endl;
   }
 }
 
@@ -373,7 +371,7 @@ void Terminal::process_get_nodes(std::vector<std::string> &command,
 
     os << "Nodes: " << nodes.size() << std::endl;
     for (const auto &node : nodes) {
-      os << knowledge_graph::to_string(node) << std::endl;
+      os << node.to_string() << std::endl;
     }
   } else {
     os << "\tUsage: \n\t\tget nodes" << std::endl;
@@ -387,7 +385,7 @@ void Terminal::process_get_edges(std::vector<std::string> &command,
 
     os << "Connections: " << edges.size() << std::endl;
     for (const auto &edge : edges) {
-      os << knowledge_graph::to_string(edge) << std::endl;
+      os << edge.to_string() << std::endl;
     }
   } else {
     os << "\tUsage: \n\t\tget edges" << std::endl;
@@ -401,7 +399,7 @@ void Terminal::process_print(std::vector<std::string> &command,
   os << "Nodes: " << nodes.size() << std::endl;
   os << "==============" << std::endl;
   for (const auto &node : nodes) {
-    os << "\t" << knowledge_graph::to_string(node) << std::endl;
+    os << "\t" << node.to_string() << std::endl;
   }
 
   const auto &edges = this->graph_->get_edges();
@@ -410,7 +408,7 @@ void Terminal::process_print(std::vector<std::string> &command,
   os << "Connections: " << edges.size() << std::endl;
   os << "==============" << std::endl;
   for (const auto &edge : edges) {
-    os << "\t" << knowledge_graph::to_string(edge) << std::endl;
+    os << "\t" << edge.to_string() << std::endl;
   }
 }
 

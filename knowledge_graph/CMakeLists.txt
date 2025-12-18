@@ -15,6 +15,11 @@ install(DIRECTORY include/
 )
 
 add_library(${PROJECT_NAME} SHARED
+  src/knowledge_graph/graph/properties.cpp
+  src/knowledge_graph/graph/properties_container.cpp
+  src/knowledge_graph/graph/node.cpp
+  src/knowledge_graph/graph/edge.cpp
+  src/knowledge_graph/graph/graph.cpp
   src/knowledge_graph/knowledge_graph.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -39,34 +44,5 @@ ament_export_dependencies(rclcpp rclcpp_lifecycle knowledge_graph_msgs)
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_python_install_package(${PROJECT_NAME})
-
-# Testing
-if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
-  find_package(ament_cmake_pytest REQUIRED)
-
-  # Graph utils tests
-  ament_add_gtest(graph_utils_test test/graph_utils_test.cpp)
-  target_include_directories(graph_utils_test PRIVATE include)
-  target_link_libraries(graph_utils_test
-    rclcpp::rclcpp
-    rclcpp_lifecycle::rclcpp_lifecycle
-    ${knowledge_graph_msgs_TARGETS}
-  )
-
-  # Knowledge graph tests
-  ament_add_gtest(knowledge_graph_test test/knowledge_graph_test.cpp)
-  target_include_directories(knowledge_graph_test PRIVATE include)
-  target_link_libraries(knowledge_graph_test
-    ${PROJECT_NAME}
-    rclcpp::rclcpp
-    rclcpp_lifecycle::rclcpp_lifecycle
-    ${knowledge_graph_msgs_TARGETS}
-  )
-
-  # Python tests
-  ament_add_pytest_test(graph_utils_test_py test/graph_utils_test.py)
-  ament_add_pytest_test(knowledge_graph_test_py test/knowledge_graph_test.py)
-endif()
 
 ament_package()

@@ -27,7 +27,6 @@
 #include "knowledge_graph_msgs/msg/graph_update.hpp"
 #include "knowledge_graph_msgs/msg/node.hpp"
 
-#include "knowledge_graph/graph_utils.hpp"
 #include "knowledge_graph/knowledge_graph.hpp"
 
 namespace knowledge_graph_terminal {
@@ -72,10 +71,6 @@ protected:
                                  std::ostringstream &os);
   virtual void process_get_edges(std::vector<std::string> &command,
                                  std::ostringstream &os);
-
-  std::optional<knowledge_graph_msgs::msg::Edge>
-  get_edge(const std::string &edge_class, const std::string &source,
-           const std::string &target);
 
   void process_print(std::vector<std::string> &command, std::ostringstream &os);
 

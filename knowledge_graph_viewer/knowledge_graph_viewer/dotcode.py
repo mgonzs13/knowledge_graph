@@ -64,21 +64,23 @@ class KnowledgeGraphDotcodeGenerator:
         for node in knowledge_graphinst.graph.get_nodes():
             dotcode_factory.add_node_to_graph(
                 dotgraph,
-                nodename=node.node_name,
-                nodelabel=node.node_name,
+                nodename=node.get_name(),
+                nodelabel=node.get_name(),
                 shape="ellipse",
-                url=node.node_name,
+                url=node.get_name(),
             )
 
         for edge in knowledge_graphinst.graph.get_edges():
-            label = edge.edge_class
+            label = edge.get_type()
 
             dotcode_factory.add_edge_to_graph(
                 dotgraph,
-                edge.source_node,
-                edge.target_node,
+                edge.get_source_node(),
+                edge.get_target_node(),
                 label=label,
-                url="%s %s %s ".format(edge.source_node, edge.target_node, label),
+                url="%s %s %s ".format(
+                    edge.get_source_node(), edge.get_target_node(), label
+                ),
                 penwidth=1,
             )
 

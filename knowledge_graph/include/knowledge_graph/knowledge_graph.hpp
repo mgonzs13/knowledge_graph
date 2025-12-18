@@ -16,14 +16,12 @@
 #ifndef KNOWLEDGE_GRAPH__KNOWLEDGE_GRAPH_HPP_
 #define KNOWLEDGE_GRAPH__KNOWLEDGE_GRAPH_HPP_
 
-#include <algorithm>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <shared_mutex>
 #include <string>
-#include <vector>
+
+#include "knowledge_graph/graph/graph.hpp"
 
 #include "knowledge_graph_msgs/msg/edge.hpp"
 #include "knowledge_graph_msgs/msg/graph.hpp"
@@ -35,10 +33,6 @@
 
 namespace knowledge_graph {
 
-/// @brief Type alias for edge filter predicates.
-using EdgePredicate =
-    std::function<bool(const knowledge_graph_msgs::msg::Edge &)>;
-
 /**
  * @brief A distributed knowledge graph implementation for ROS 2.
  *
@@ -47,13 +41,12 @@ using EdgePredicate =
  * nodes and edges, with automatic synchronization between instances.
  *
  */
-class KnowledgeGraph {
+class KnowledgeGraph : public graph::Graph {
 public:
   /**
    * @brief Constructs a KnowledgeGraph with a raw pointer to a ROS 2 node.
-   * @param provided_node Pointer to the ROS 2 node that owns this graph.
    */
-  explicit KnowledgeGraph(rclcpp::Node *provided_node);
+  explicit KnowledgeGraph(rclcpp::Node *node_ptr);
 
   /**
    * @brief Constructs a KnowledgeGraph with a shared pointer to a ROS 2 node.
@@ -76,142 +69,146 @@ public:
    */
   ~KnowledgeGraph() = default;
 
-  /**
-   * @brief Removes a node from the graph.
-   * @param node The name of the node to remove.
-   * @param sync If true, synchronizes the removal with other graph instances.
-   * @return True if the node was successfully removed, false otherwise.
-   * @note This also removes all edges connected to the node.
-   */
-  bool remove_node(const std::string &node, bool sync = true);
+  void update_graph(const graph::Graph &graph) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    for (const auto &node : graph.get_nodes()) {
+      graph::Graph::update_node(node);
+    }
 
-  /**
-   * @brief Checks if a node exists in the graph.
-   * @param node The name of the node to check.
-   * @return True if the node exists, false otherwise.
-   */
-  bool exist_node(const std::string &node);
+    for (const auto &edge : graph.get_edges()) {
+      graph::Graph::update_edge(edge);
+    }
+  }
 
-  /**
-   * @brief Retrieves a node from the graph.
-   * @param node The name of the node to retrieve.
-   * @return An optional containing the node if found, empty otherwise.
-   */
-  std::optional<knowledge_graph_msgs::msg::Node>
-  get_node(const std::string &node);
+  graph::Node create_node(const std::string &name,
+                          const std::string &type) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    graph::Node node = graph::Graph::create_node(name, type);
+    this->publish_update(
+        knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
+        knowledge_graph_msgs::msg::GraphUpdate::NODE,
+        std::vector<knowledge_graph_msgs::msg::Node>{node.to_msg()}, {});
+    return node;
+  }
 
-  /**
-   * @brief Removes an edge from the graph.
-   * @param edge The edge to remove.
-   * @param sync If true, synchronizes the removal with other graph instances.
-   * @return True if the edge was successfully removed, false otherwise.
-   */
-  bool remove_edge(const knowledge_graph_msgs::msg::Edge &edge,
-                   bool sync = true);
+  void update_node(const graph::Node &node) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    graph::Graph::update_node(node);
+    this->publish_update(
+        knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
+        knowledge_graph_msgs::msg::GraphUpdate::NODE,
+        std::vector<knowledge_graph_msgs::msg::Node>{node.to_msg()}, {});
+  }
 
-  /**
-   * @brief Gets all edges between two nodes.
-   * @param source The source node name.
-   * @param target The target node name.
-   * @return Vector of edges connecting the source and target nodes.
-   */
-  std::vector<knowledge_graph_msgs::msg::Edge>
-  get_edges(const std::string &source, const std::string &target);
+  void update_nodes(const std::vector<graph::Node> &nodes) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    std::vector<knowledge_graph_msgs::msg::Node> node_msgs;
+    for (const auto &node : nodes) {
+      graph::Graph::update_node(node);
+      node_msgs.push_back(node.to_msg());
+    }
+    this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
+                         knowledge_graph_msgs::msg::GraphUpdate::NODE,
+                         node_msgs, {});
+  }
 
-  /**
-   * @brief Gets all edges of a specific class.
-   * @param edge_class The class/type of edges to retrieve.
-   * @return Vector of edges matching the specified class.
-   */
-  std::vector<knowledge_graph_msgs::msg::Edge>
-  get_edges(const std::string &edge_class);
+  bool remove_node(const graph::Node &node) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    bool removed = graph::Graph::remove_node(node);
+    if (removed) {
+      this->publish_update(
+          knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
+          knowledge_graph_msgs::msg::GraphUpdate::NODE,
+          std::vector<knowledge_graph_msgs::msg::Node>{node.to_msg()}, {});
+    }
+    return removed;
+  }
 
-  /**
-   * @brief Gets all outgoing edges from a node.
-   * @param source The source node name.
-   * @return Vector of edges originating from the source node.
-   */
-  std::vector<knowledge_graph_msgs::msg::Edge>
-  get_out_edges(const std::string &source);
+  void remove_nodes(const std::vector<graph::Node> &nodes) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    std::vector<knowledge_graph_msgs::msg::Node> removed_nodes;
+    for (const auto &node : nodes) {
+      if (graph::Graph::remove_node(node)) {
+        removed_nodes.push_back(node.to_msg());
+      }
+    }
+    if (!removed_nodes.empty()) {
+      this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
+                           knowledge_graph_msgs::msg::GraphUpdate::NODE,
+                           removed_nodes, {});
+    }
+  }
 
-  /**
-   * @brief Gets all incoming edges to a node.
-   * @param target The target node name.
-   * @return Vector of edges pointing to the target node.
-   */
-  std::vector<knowledge_graph_msgs::msg::Edge>
-  get_in_edges(const std::string &target);
+  graph::Edge create_edge(const std::string &type,
+                          const std::string &source_node,
+                          const std::string &target_node) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    graph::Edge edge =
+        graph::Graph::create_edge(type, source_node, target_node);
+    this->publish_update(
+        knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
+        knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
+        std::vector<knowledge_graph_msgs::msg::Edge>{edge.to_msg()});
+    return edge;
+  }
 
-  /**
-   * @brief Gets all nodes in the graph.
-   * @return Vector copy of all nodes (thread-safe).
-   */
-  std::vector<knowledge_graph_msgs::msg::Node> get_nodes() const;
+  void update_edge(const graph::Edge &edge) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    graph::Graph::update_edge(edge);
+    this->publish_update(
+        knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
+        knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
+        std::vector<knowledge_graph_msgs::msg::Edge>{edge.to_msg()});
+  }
 
-  /**
-   * @brief Gets all edges in the graph.
-   * @return Vector copy of all edges (thread-safe).
-   */
-  std::vector<knowledge_graph_msgs::msg::Edge> get_edges() const;
+  void update_edges(const std::vector<graph::Edge> &edges) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    std::vector<knowledge_graph_msgs::msg::Edge> edge_msgs;
+    for (const auto &edge : edges) {
+      graph::Graph::update_edge(edge);
+      edge_msgs.push_back(edge.to_msg());
+    }
+    this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
+                         knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
+                         edge_msgs);
+  }
 
-  /**
-   * @brief Gets the names of all nodes in the graph.
-   * @return Vector of node names.
-   */
-  const std::vector<std::string> get_node_names();
+  bool remove_edge(const graph::Edge &edge) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    bool removed = graph::Graph::remove_edge(edge);
+    if (removed) {
+      this->publish_update(
+          knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
+          knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
+          std::vector<knowledge_graph_msgs::msg::Edge>{edge.to_msg()});
+    }
+    return removed;
+  }
 
-  /**
-   * @brief Gets the number of edges in the graph.
-   * @return The number of edges.
-   */
-  size_t get_num_edges() const;
-
-  /**
-   * @brief Gets the number of nodes in the graph.
-   * @return The number of nodes.
-   */
-  size_t get_num_nodes() const;
-
-  /**
-   * @brief Updates or adds a node in the graph.
-   * @param node The node to update or add.
-   * @param sync If true, synchronizes the update with other graph instances.
-   * @return True if the operation was successful.
-   */
-  bool update_node(const knowledge_graph_msgs::msg::Node &node,
-                   bool sync = true);
-
-  /**
-   * @brief Updates or adds an edge in the graph.
-   * @param edge The edge to update or add.
-   * @param sync If true, synchronizes the update with other graph instances.
-   * @return True if the operation was successful, false if source or target
-   * nodes don't exist.
-   */
-  bool update_edge(const knowledge_graph_msgs::msg::Edge &edge,
-                   bool sync = true);
+  void remove_edges(const std::vector<graph::Edge> &edges) override {
+    std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
+    std::vector<knowledge_graph_msgs::msg::Edge> removed_edges;
+    for (auto &edge : edges) {
+      if (graph::Graph::remove_edge(edge)) {
+        removed_edges.push_back(edge.to_msg());
+      }
+    }
+    if (!removed_edges.empty()) {
+      this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
+                           knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
+                           removed_edges);
+    }
+  }
 
 protected:
   /// @brief Pointer to the ROS 2 node that owns this graph.
-  rclcpp::Node *provided_node;
-
-  /// @brief The internal graph data structure.
-  knowledge_graph_msgs::msg::Graph::UniquePtr graph;
+  rclcpp::Node *node;
 
   /// @brief Unique identifier for this graph instance.
   std::string graph_id;
 
   /// @brief Timestamp of the last graph modification.
   rclcpp::Time last_ts;
-
-  /// @brief Shared mutex for thread-safe graph read/write operations.
-  mutable std::shared_mutex graph_mutex;
-
-  /**
-   * @brief Updates the local graph with data from another graph.
-   * @param msg The graph message containing updates.
-   */
-  void update_graph(knowledge_graph_msgs::msg::Graph msg);
 
   /**
    * @brief Callback for handling incoming graph update messages.
@@ -230,21 +227,11 @@ protected:
    * @param element The element type (NODE, EDGE).
    * @param node Optional node data for node operations.
    * @param edge Optional edge data for edge operations.
-   * @param removed_node Optional name of removed node.
    */
-  void publish_update(
-      uint8_t operation, uint8_t element,
-      const std::optional<knowledge_graph_msgs::msg::Node> &node = std::nullopt,
-      const std::optional<knowledge_graph_msgs::msg::Edge> &edge = std::nullopt,
-      const std::string &removed_node = "");
-
-  /**
-   * @brief Filters edges based on a predicate.
-   * @param predicate Function to test each edge.
-   * @return Vector of edges matching the predicate.
-   */
-  std::vector<knowledge_graph_msgs::msg::Edge>
-  filter_edges(const EdgePredicate &predicate) const;
+  void
+  publish_update(uint8_t operation, uint8_t element,
+                 const std::vector<knowledge_graph_msgs::msg::Node> &nodes,
+                 const std::vector<knowledge_graph_msgs::msg::Edge> &edges);
 
 private:
   /// @brief Publisher for graph update messages.
@@ -260,6 +247,9 @@ private:
 
   /// @brief Start time for synchronization timeout.
   rclcpp::Time start_time;
+
+  /// @brief Mutex for thread-safe graph operations.
+  mutable std::recursive_mutex graph_mutex_;
 };
 
 } // namespace knowledge_graph

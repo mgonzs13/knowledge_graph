@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
 import json
+from typing import List
 
 import rclpy
-from rclpy.node import Node
+from rclpy.node import Node as ROSNode
 
 from knowledge_graph import KnowledgeGraph
+from knowledge_graph.graph import Node, Edge
 from knowledge_graph_msgs.msg import Node as NodeMsg
 from knowledge_graph_msgs.msg import Edge as EdgeMsg
 from knowledge_graph_msgs.msg import Content
@@ -30,7 +31,7 @@ import sqlite3
 from sqlite3 import Error
 
 
-class KnowledgeGraphDbNode(Node):
+class KnowledgeGraphDbNode(ROSNode):
 
     def __init__(self) -> None:
         super().__init__("knowledge_graph_db")
@@ -44,13 +45,13 @@ class KnowledgeGraphDbNode(Node):
         self.create_tables()
         self.load_db()
 
-        self.graph._update_node_internal = self.update_node
-        self.graph._remove_node_internal = self.remove_node
-        self.graph._update_edge_internal = self.update_edge
-        self.graph._remove_edge_internal = self.remove_edge
+        self.graph.update_node = self.update_node
+        self.graph.remove_node = self.remove_node
+        self.graph.update_edge = self.update_edge
+        self.graph.remove_edge = self.remove_edge
 
-        self.get_logger().info("Knowledge Graph DB Node Started")
         self.graph._reqsync_timer_callback()
+        self.get_logger().info("Knowledge Graph DB Node Started")
 
     def create_connection(self, db_file: str) -> sqlite3.Connection:
         try:
@@ -67,42 +68,44 @@ class KnowledgeGraphDbNode(Node):
         for nr in nodes_row:
             node_msg = NodeMsg()
 
-            node_msg.node_name = nr[0]
-            node_msg.node_class = nr[1]
+            node_msg.name = nr[0]
+            node_msg.type = nr[1]
             node_msg.properties = self.parse_str_properties(nr[2])
 
-            self.graph.update_node(node_msg)
+            node = Node(msg=node_msg)
+            self.graph.update_node(node)
 
         c.execute("SELECT * FROM edges")
         edges_rows = c.fetchall()
         for er in edges_rows:
             edge_msg = EdgeMsg()
 
-            edge_msg.edge_class = er[0]
+            edge_msg.type = er[0]
             edge_msg.source_node = er[1]
             edge_msg.target_node = er[2]
             edge_msg.properties = self.parse_str_properties(er[3])
 
-            self.graph.update_edge(edge_msg)
+            edge = Edge(msg=edge_msg)
+            self.graph.update_edge(edge)
 
     def create_tables(self) -> None:
         c = self.sqlite_conn.cursor()
 
         sql_create_nodes_table = """CREATE TABLE IF NOT EXISTS nodes (
-                                        node_name text PRIMARY KEY,
-                                        node_class text NOT NULL,
+                                        name text PRIMARY KEY,
+                                        type text NOT NULL,
                                         properties text
                                     );"""
         c.execute(sql_create_nodes_table)
 
         sql_create_edges_table = """CREATE TABLE IF NOT EXISTS edges (
-                                    edge_class text NOT NULL,
+                                    type text NOT NULL,
                                     source_node text NOT NULL,
                                     target_node text NOT NULL,
                                     properties text,
-                                    PRIMARY KEY (edge_class, source_node, target_node),
-                                    FOREIGN KEY (source_node) REFERENCES nodes (node_name)
-                                    FOREIGN KEY (target_node) REFERENCES nodes (node_name)
+                                    PRIMARY KEY (type, source_node, target_node),
+                                    FOREIGN KEY (source_node) REFERENCES nodes (name)
+                                    FOREIGN KEY (target_node) REFERENCES nodes (name)
                                 );"""
         c.execute(sql_create_edges_table)
 
@@ -185,20 +188,20 @@ class KnowledgeGraphDbNode(Node):
 
         return properties_str
 
-    #
+    # =========================================================================
     # SQL nodes methods
-    #
+    # =========================================================================
     def exist_sql_node(self, node: NodeMsg) -> bool:
         c = self.sqlite_conn.cursor()
-        c.execute("SELECT count(*) FROM nodes WHERE node_name = ?;", (node.node_name,))
+        c.execute("SELECT count(*) FROM nodes WHERE name = ?;", (node.name,))
         data = c.fetchone()[0]
         return data != 0
 
     def parse_node(self, node: NodeMsg) -> List[str]:
-        return (node.node_name, node.node_class, self.parse_properties(node.properties))
+        return (node.name, node.type, self.parse_properties(node.properties))
 
     def insert_sql_node(self, node: NodeMsg) -> None:
-        sql = """INSERT INTO nodes(node_name, node_class, properties)
+        sql = """INSERT INTO nodes(name, type, properties)
                  VALUES(?, ?, ?);"""
         c = self.sqlite_conn.cursor()
         c.execute(sql, self.parse_node(node))
@@ -206,29 +209,29 @@ class KnowledgeGraphDbNode(Node):
 
     def update_sql_node(self, node: NodeMsg) -> None:
         sql = """UPDATE nodes
-              SET node_name = ?,
-                  node_class = ?,
+              SET name = ?,
+                  type = ?,
                   properties = ?
-              WHERE node_name = ?;"""
+              WHERE name = ?;"""
         c = self.sqlite_conn.cursor()
-        c.execute(sql, self.parse_node(node) + (node.node_name,))
+        c.execute(sql, self.parse_node(node) + (node.name,))
         self.sqlite_conn.commit()
 
     def remove_sql_node(self, node: str) -> None:
-        sql = """DELETE FROM nodes WHERE node_name = ?;"""
+        sql = """DELETE FROM nodes WHERE name = ?;"""
         c = self.sqlite_conn.cursor()
         c.execute(sql, (node,))
         self.sqlite_conn.commit()
 
-    #
+    # =========================================================================
     # SQL edges methods
-    #
+    # =========================================================================
     def exist_sql_edge(self, edge: EdgeMsg) -> bool:
         c = self.sqlite_conn.cursor()
         c.execute(
-            "SELECT count(*) FROM edges WHERE edge_class = ? AND source_node = ? AND target_node = ?;",
+            "SELECT count(*) FROM edges WHERE type = ? AND source_node = ? AND target_node = ?;",
             (
-                edge.edge_class,
+                edge.type,
                 edge.source_node,
                 edge.target_node,
             ),
@@ -238,14 +241,14 @@ class KnowledgeGraphDbNode(Node):
 
     def parse_edge(self, edge: EdgeMsg) -> List[str]:
         return (
-            edge.edge_class,
+            edge.type,
             edge.source_node,
             edge.target_node,
             self.parse_properties(edge.properties),
         )
 
     def insert_sql_edge(self, edge: EdgeMsg) -> None:
-        sql = """INSERT INTO edges(edge_class, source_node, target_node, properties)
+        sql = """INSERT INTO edges(type, source_node, target_node, properties)
                  VALUES(?, ?, ?, ?);"""
         c = self.sqlite_conn.cursor()
         c.execute(sql, self.parse_edge(edge))
@@ -253,66 +256,64 @@ class KnowledgeGraphDbNode(Node):
 
     def update_sql_edge(self, edge: EdgeMsg) -> None:
         sql = """UPDATE edges
-              SET edge_class = ?,
+              SET type = ?,
                   source_node = ?,
                   target_node = ?,
                   properties = ?
-              WHERE edge_class = ? AND source_node = ? AND target_node = ?;"""
+              WHERE type = ? AND source_node = ? AND target_node = ?;"""
         c = self.sqlite_conn.cursor()
         c.execute(
             sql,
-            self.parse_edge(edge) + (edge.edge_class, edge.source_node, edge.target_node),
+            self.parse_edge(edge) + (edge.type, edge.source_node, edge.target_node),
         )
         self.sqlite_conn.commit()
 
     def remove_sql_edge(self, edge: EdgeMsg) -> None:
-        sql = """DELETE FROM edges WHERE edge_class = ? AND source_node = ? AND target_node = ?;"""
+        sql = """DELETE FROM edges WHERE type = ? AND source_node = ? AND target_node = ?;"""
         c = self.sqlite_conn.cursor()
-        c.execute(sql, (edge.edge_class, edge.source_node, edge.target_node))
+        c.execute(sql, (edge.type, edge.source_node, edge.target_node))
         self.sqlite_conn.commit()
 
-    #
-    # graph methods
-    #
-    def update_node(self, node: NodeMsg, sync: bool = True) -> None:
-        updated = KnowledgeGraph._update_node_internal(self.graph, node, sync)
+    # =========================================================================
+    # Overridden KnowledgeGraph Methods
+    # =========================================================================
+    def update_node(self, node: Node) -> None:
+        KnowledgeGraph.update_node(self.graph, node)
 
-        if updated:
-            if self.exist_sql_node(node):
-                self.update_sql_node(node)
-            else:
-                self.insert_sql_node(node)
+        msg = node.to_msg()
 
-        return updated
+        if self.exist_sql_node(msg):
+            self.update_sql_node(msg)
+        else:
+            self.insert_sql_node(msg)
 
-    def remove_node(self, node: str, sync: bool = True) -> bool:
-        edges = self.graph.graph.edges.copy()
-        removed = KnowledgeGraph._remove_node_internal(self.graph, node, sync)
+    def remove_node(self, node: Node) -> bool:
+        edges = self.graph.get_edges().copy()
+        removed = KnowledgeGraph.remove_node(self.graph, node)
 
         if removed:
-            self.remove_sql_node(node)
+            self.remove_sql_node(node.get_name())
 
             for e in edges:
-                if e.source_node == node or e.target_node == node:
-                    self.remove_sql_edge(e)
+                if e.get_source_node() == node or e.get_target_node() == node:
+                    self.remove_sql_edge(e.to_msg())
 
         return removed
 
-    def update_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
-        updated = KnowledgeGraph._update_edge_internal(self.graph, edge, sync)
+    def update_edge(self, edge: Edge) -> None:
+        KnowledgeGraph.update_edge(self.graph, edge)
 
-        if updated:
-            if self.exist_sql_edge(edge):
-                self.update_sql_edge(edge)
-            else:
-                self.insert_sql_edge(edge)
+        msg = edge.to_msg()
 
-        return updated
+        if self.exist_sql_edge(msg):
+            self.update_sql_edge(msg)
+        else:
+            self.insert_sql_edge(msg)
 
-    def remove_edge(self, edge: EdgeMsg, sync: bool = True) -> bool:
-        removed = KnowledgeGraph._remove_edge_internal(self.graph, edge, sync)
+    def remove_edge(self, edge: Edge) -> bool:
+        removed = KnowledgeGraph.remove_edge(self.graph, edge)
         if removed:
-            self.remove_sql_edge(edge)
+            self.remove_sql_edge(edge.to_msg())
         return removed
 
 

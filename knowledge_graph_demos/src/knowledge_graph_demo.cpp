@@ -15,9 +15,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
-#include <thread>
 
-#include "knowledge_graph/graph_utils.hpp"
 #include "knowledge_graph/knowledge_graph.hpp"
 #include "rclcpp/rclcpp.hpp"
 
@@ -42,71 +40,50 @@ public:
 private:
   void create_instances() {
     // Create robot instance
-    auto leia = knowledge_graph::new_node("leia", "robot");
-    this->graph_->update_node(leia);
+    this->graph_->create_node("leia", "robot");
 
     // Create room instances
-    auto entrance = knowledge_graph::new_node("entrance", "room");
-    this->graph_->update_node(entrance);
+    this->graph_->create_node("entrance", "room");
 
-    auto kitchen = knowledge_graph::new_node("kitchen", "room");
-    this->graph_->update_node(kitchen);
+    this->graph_->create_node("kitchen", "room");
 
-    auto bedroom = knowledge_graph::new_node("bedroom", "room");
-    this->graph_->update_node(bedroom);
+    this->graph_->create_node("bedroom", "room");
 
-    auto dinning = knowledge_graph::new_node("dinning", "room");
-    this->graph_->update_node(dinning);
+    this->graph_->create_node("dinning", "room");
 
-    auto bathroom = knowledge_graph::new_node("bathroom", "room");
-    this->graph_->update_node(bathroom);
+    this->graph_->create_node("bathroom", "room");
 
-    auto chargingroom = knowledge_graph::new_node("chargingroom", "room");
-    this->graph_->update_node(chargingroom);
+    this->graph_->create_node("chargingroom", "room");
   }
 
   void create_predicates() {
     // Connected predicates (bidirectional)
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "entrance", "dinning"));
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "dinning", "entrance"));
+    this->graph_->create_edge("connected", "entrance", "dinning");
+    this->graph_->create_edge("connected", "dinning", "entrance");
 
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "dinning", "kitchen"));
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "kitchen", "dinning"));
+    this->graph_->create_edge("connected", "dinning", "kitchen");
+    this->graph_->create_edge("connected", "kitchen", "dinning");
 
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "dinning", "bedroom"));
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "bedroom", "dinning"));
+    this->graph_->create_edge("connected", "dinning", "bedroom");
+    this->graph_->create_edge("connected", "bedroom", "dinning");
 
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "bathroom", "bedroom"));
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "bedroom", "bathroom"));
+    this->graph_->create_edge("connected", "bathroom", "bedroom");
+    this->graph_->create_edge("connected", "bedroom", "bathroom");
 
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "chargingroom", "kitchen"));
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("connected", "kitchen", "chargingroom"));
+    this->graph_->create_edge("connected", "chargingroom", "kitchen");
+    this->graph_->create_edge("connected", "kitchen", "chargingroom");
 
     // Other predicates
-    this->graph_->update_edge(knowledge_graph::new_edge(
-        "charging_point_at", "chargingroom", "chargingroom"));
+    this->graph_->create_edge("charging_point_at", "chargingroom",
+                              "chargingroom");
+    this->graph_->create_edge("battery_low", "leia", "leia");
 
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("battery_low", "leia", "leia"));
-
-    this->graph_->update_edge(
-        knowledge_graph::new_edge("robot_at", "leia", "entrance"));
+    this->graph_->create_edge("robot_at", "leia", "entrance");
 
     // Goal predicate
     auto goal_edge =
-        knowledge_graph::new_edge("robot_at", "leia", "chargingroom");
-    auto is_goal = knowledge_graph::new_content<bool>(true);
-    knowledge_graph::add_property<bool>(goal_edge, "is_goal", true);
+        this->graph_->create_edge("robot_at", "leia", "chargingroom");
+    goal_edge.set_property<bool>("is_goal", true);
     this->graph_->update_edge(goal_edge);
   }
 
@@ -117,15 +94,13 @@ private:
     auto nodes = this->graph_->get_nodes();
     RCLCPP_INFO(this->get_logger(), "Nodes (%zu):", nodes.size());
     for (const auto &node : nodes) {
-      RCLCPP_INFO(this->get_logger(), "  %s",
-                  knowledge_graph::to_string(node).c_str());
+      RCLCPP_INFO(this->get_logger(), "  %s", node.to_string().c_str());
     }
 
     auto edges = this->graph_->get_edges();
     RCLCPP_INFO(this->get_logger(), "Edges (%zu):", edges.size());
     for (const auto &edge : edges) {
-      RCLCPP_INFO(this->get_logger(), "  %s",
-                  knowledge_graph::to_string(edge).c_str());
+      RCLCPP_INFO(this->get_logger(), "  %s", edge.to_string().c_str());
     }
   }
 

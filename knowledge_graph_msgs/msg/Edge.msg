@@ -1,4 +1,4 @@
-string edge_class
+string type
 
 string source_node
 string target_node
