@@ -1,4 +1,4 @@
-// Copyright 2023 Miguel Ángel González Santamarta
+// Copyright 2025 Miguel Ángel González Santamarta
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,8 +81,7 @@ private:
     this->graph_->create_edge("robot_at", "leia", "entrance");
 
     // Goal predicate
-    auto goal_edge =
-        this->graph_->create_edge("robot_at", "leia", "chargingroom");
+    auto goal_edge = this->graph_->create_edge("robot_at", "leia", "bathroom");
     goal_edge.set_property<bool>("is_goal", true);
     this->graph_->update_edge(goal_edge);
   }

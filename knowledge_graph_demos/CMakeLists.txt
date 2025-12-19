@@ -24,4 +24,10 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Install Python demo script
+install(PROGRAMS
+  knowledge_graph_demos/knowledge_graph_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()
