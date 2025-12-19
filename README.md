@@ -59,21 +59,9 @@ colcon test-result --verbose
 #include "rclcpp/rclcpp.hpp"
 #include "knowledge_graph/knowledge_graph.hpp"
 
-class NodeA : public rclcpp::Node {
-public:
-  NodeA() : rclcpp::Node("node_a") {
-    this->graph_ = KnowledgeGraph(shared_from_this());
-  }
-
-private:
-  std::shared_ptr<knowledge_graph::KnowledgeGraph> graph_;
-};
-
-
 int master(int argc, char ** argv) {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<NodeA>();
-  rclcpp::spin(node);
+  auto graph = KnowledgeGraph::get_instance()  rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;
 }
@@ -83,20 +71,12 @@ int master(int argc, char ** argv) {
 
 ```python
 import rclpy
-from rclpy.node import Node
 from knowledge_graph import KnowledgeGraph
-
-
-class NodeA(Node):
-  def __init__(self) -> None:
-    super().__init__("node_a")
-    graph = KnowledgeGraph(self)
 
 
 def master():
   rclpy.init()
-  node = NodeA()
-  rclpy.spin(node)
+  graph = KnowledgeGraph.get_instance()
   rclpy.shutdown()
 
 

@@ -61,11 +61,15 @@ if(BUILD_TESTING)
   ament_add_gtest(test_graph test/test_graph.cpp)
   target_link_libraries(test_graph ${PROJECT_NAME})
 
+  ament_add_gtest(test_knowledge_graph test/test_knowledge_graph.cpp)
+  target_link_libraries(test_knowledge_graph ${PROJECT_NAME})
+
   # Python Tests
   ament_add_pytest_test(test_properties_py test/test_properties.py)
   ament_add_pytest_test(test_node_py test/test_node.py)
   ament_add_pytest_test(test_edge_py test/test_edge.py)
   ament_add_pytest_test(test_graph_py test/test_graph.py)
+  ament_add_pytest_test(test_knowledge_graph_py test/test_knowledge_graph.py)
 endif()
 
 ament_package()
