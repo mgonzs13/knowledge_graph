@@ -28,7 +28,8 @@ def rclpy_init():
     if not rclpy.ok():
         rclpy.init()
     yield
-    # Note: We don't shutdown rclpy here because the singleton may still be in use
+    if rclpy.ok():
+        rclpy.shutdown()
 
 
 @pytest.fixture
