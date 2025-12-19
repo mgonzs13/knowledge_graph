@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <csignal>
+#include <cstring>
 #include <list>
 #include <map>
 #include <memory>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <stdio.h>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
@@ -32,6 +36,8 @@
 #include "knowledge_graph_terminal/terminal.hpp"
 
 namespace knowledge_graph_terminal {
+
+static knowledge_graph::KnowledgeGraph *current_graph = nullptr;
 
 std::vector<std::string> tokenize(const std::string &text,
                                   const std::string delim) {
@@ -51,6 +57,84 @@ std::vector<std::string> tokenize(const std::string &text,
   return ret;
 }
 
+void print_properties(
+    std::ostringstream &os,
+    const std::vector<knowledge_graph_msgs::msg::Property> &props) {
+  if (props.empty())
+    return;
+
+  os << "Properties:" << std::endl;
+  for (const auto &prop : props) {
+    os << "  " << prop.key << ": ";
+    const auto &content = prop.value;
+    switch (content.type) {
+    case knowledge_graph_msgs::msg::Content::BOOL:
+      os << (content.bool_value ? "true" : "false");
+      break;
+    case knowledge_graph_msgs::msg::Content::INT:
+      os << content.int_value;
+      break;
+    case knowledge_graph_msgs::msg::Content::FLOAT:
+      os << content.float_value;
+      break;
+    case knowledge_graph_msgs::msg::Content::DOUBLE:
+      os << content.double_value;
+      break;
+    case knowledge_graph_msgs::msg::Content::STRING:
+      os << "\"" << content.string_value << "\"";
+      break;
+    case knowledge_graph_msgs::msg::Content::VBOOL:
+      os << "[";
+      for (size_t i = 0; i < content.bool_vector.size(); ++i) {
+        if (i > 0)
+          os << ", ";
+        os << (content.bool_vector[i] ? "true" : "false");
+      }
+      os << "]";
+      break;
+    case knowledge_graph_msgs::msg::Content::VINT:
+      os << "[";
+      for (size_t i = 0; i < content.int_vector.size(); ++i) {
+        if (i > 0)
+          os << ", ";
+        os << content.int_vector[i];
+      }
+      os << "]";
+      break;
+    case knowledge_graph_msgs::msg::Content::VFLOAT:
+      os << "[";
+      for (size_t i = 0; i < content.float_vector.size(); ++i) {
+        if (i > 0)
+          os << ", ";
+        os << content.float_vector[i];
+      }
+      os << "]";
+      break;
+    case knowledge_graph_msgs::msg::Content::VDOUBLE:
+      os << "[";
+      for (size_t i = 0; i < content.double_vector.size(); ++i) {
+        if (i > 0)
+          os << ", ";
+        os << content.double_vector[i];
+      }
+      os << "]";
+      break;
+    case knowledge_graph_msgs::msg::Content::VSTRING:
+      os << "[";
+      for (size_t i = 0; i < content.string_vector.size(); ++i) {
+        if (i > 0)
+          os << ", ";
+        os << "\"" << content.string_vector[i] << "\"";
+      }
+      os << "]";
+      break;
+    default:
+      os << "unknown type";
+    }
+    os << std::endl;
+  }
+}
+
 void pop_front(std::vector<std::string> &tokens) {
   if (!tokens.empty()) {
     tokens.erase(tokens.begin(), tokens.begin() + 1);
@@ -65,42 +149,124 @@ char *completion_generator(const char *text, int state) {
   static std::vector<std::string> matches;
   static size_t match_index = 0;
 
-  std::vector<std::string> vocabulary{"add", "remove", "get", "print"};
-  std::vector<std::string> vocabulary_add{"node", "edge"};
-  std::vector<std::string> vocabulary_remove{"node", "edge"};
-  std::vector<std::string> vocabulary_get{"node", "edge", "nodes", "edges"};
-
   if (state == 0) {
     // During initialization, compute the actual matches for 'text' and keep
     // them in a static vector.
     matches.clear();
     match_index = 0;
 
-    // Collect a vector of matches: vocabulary words that begin with text.
+    // Collect a vector of matches based on current context.
     std::string textstr = std::string(text);
-
     auto current_text = tokenize(rl_line_buffer);
-    std::vector<std::string> *current_vocabulary = nullptr;
+    std::vector<std::string> candidates;
 
     if (current_text.size() <= 1) {
-      current_vocabulary = &vocabulary;
-    } else {
-      if (current_text.size() == 2) {
-        if (current_text[0] == "add") {
-          current_vocabulary = &vocabulary_add;
-        } else if (current_text[0] == "remove") {
-          current_vocabulary = &vocabulary_remove;
-        } else if (current_text[0] == "get") {
-          current_vocabulary = &vocabulary_get;
+      candidates = {"add", "remove", "get", "print"};
+    } else if (current_text.size() == 2) {
+      if (current_text[0] == "add") {
+        candidates = {"node", "edge"};
+      } else if (current_text[0] == "remove") {
+        candidates = {"node", "edge"};
+      } else if (current_text[0] == "get") {
+        candidates = {"node", "edge", "nodes", "edges"};
+      }
+    } else if (current_text[0] == "get") {
+      if (current_text[1] == "node" && current_text.size() == 3) {
+        // complete node names
+        if (current_graph) {
+          const auto &nodes = current_graph->get_nodes();
+          for (const auto &node : nodes) {
+            candidates.push_back(node.get_name());
+          }
+        }
+      } else if (current_text[1] == "edge") {
+        if (current_text.size() == 3) {
+          // complete edge types
+          if (current_graph) {
+            const auto &edges = current_graph->get_edges();
+            std::set<std::string> types;
+            for (const auto &edge : edges) {
+              types.insert(edge.get_type());
+            }
+            candidates.assign(types.begin(), types.end());
+          }
+        } else if (current_text.size() == 4) {
+          // complete sources for the given type
+          if (current_graph) {
+            const auto &edges = current_graph->get_edges();
+            std::set<std::string> sources;
+            for (const auto &edge : edges) {
+              if (edge.get_type() == current_text[2]) {
+                sources.insert(edge.get_source_node());
+              }
+            }
+            candidates.assign(sources.begin(), sources.end());
+          }
+        } else if (current_text.size() == 5) {
+          // complete targets for the given type and source
+          if (current_graph) {
+            const auto &edges = current_graph->get_edges();
+            std::set<std::string> targets;
+            for (const auto &edge : edges) {
+              if (edge.get_type() == current_text[2] &&
+                  edge.get_source_node() == current_text[3]) {
+                targets.insert(edge.get_target_node());
+              }
+            }
+            candidates.assign(targets.begin(), targets.end());
+          }
+        }
+      }
+    } else if (current_text[0] == "remove") {
+      if (current_text[1] == "node" && current_text.size() == 3) {
+        // complete node names
+        if (current_graph) {
+          const auto &nodes = current_graph->get_nodes();
+          for (const auto &node : nodes) {
+            candidates.push_back(node.get_name());
+          }
+        }
+      } else if (current_text[1] == "edge") {
+        if (current_text.size() == 3) {
+          // complete edge types
+          if (current_graph) {
+            const auto &edges = current_graph->get_edges();
+            std::set<std::string> types;
+            for (const auto &edge : edges) {
+              types.insert(edge.get_type());
+            }
+            candidates.assign(types.begin(), types.end());
+          }
+        } else if (current_text.size() == 4) {
+          // complete sources for the given type
+          if (current_graph) {
+            const auto &edges = current_graph->get_edges();
+            std::set<std::string> sources;
+            for (const auto &edge : edges) {
+              if (edge.get_type() == current_text[2]) {
+                sources.insert(edge.get_source_node());
+              }
+            }
+            candidates.assign(sources.begin(), sources.end());
+          }
+        } else if (current_text.size() == 5) {
+          // complete targets for the given type and source
+          if (current_graph) {
+            const auto &edges = current_graph->get_edges();
+            std::set<std::string> targets;
+            for (const auto &edge : edges) {
+              if (edge.get_type() == current_text[2] &&
+                  edge.get_source_node() == current_text[3]) {
+                targets.insert(edge.get_target_node());
+              }
+            }
+            candidates.assign(targets.begin(), targets.end());
+          }
         }
       }
     }
 
-    if (current_vocabulary == nullptr) {
-      return nullptr;
-    }
-
-    for (auto word : *current_vocabulary) {
+    for (auto word : candidates) {
       if (word.size() >= textstr.size() &&
           word.compare(0, textstr.size(), textstr) == 0) {
         matches.push_back(word);
@@ -140,6 +306,9 @@ void Terminal::run_console() {
   std::cout << "Knowledge Graph console. Type \"quit\" to finish" << std::endl;
 
   rl_attempted_completion_function = completer;
+  current_graph = this->graph_.get();
+  rl_catch_signals = 0;
+  signal(SIGINT, SIG_IGN);
 
   bool finish = false;
   while (!finish) {
@@ -149,19 +318,17 @@ void Terminal::run_console() {
       finish = true;
     }
 
-    if (strlen(line) > 0) {
+    if (!finish && line && strlen(line) > 0) {
       add_history(line);
 
       std::string line_str(line);
       free(line);
 
-      if (!finish) {
-        this->clean_command(line_str);
+      this->clean_command(line_str);
 
-        std::ostringstream os;
-        this->process_command(line_str, os);
-        std::cout << os.str();
-      }
+      std::ostringstream os;
+      this->process_command(line_str, os);
+      std::cout << os.str();
     }
   }
 
@@ -339,6 +506,7 @@ void Terminal::process_get_node(std::vector<std::string> &command,
     if (this->graph_->has_node(command[0])) {
       auto node = this->graph_->get_node(command[0]);
       os << node.to_string() << std::endl;
+      print_properties(os, node.properties_to_msg());
     } else {
       os << "node [" << command[0] << "] not found" << std::endl;
     }
@@ -354,6 +522,7 @@ void Terminal::process_get_edge(std::vector<std::string> &command,
     if (this->graph_->has_edge(command[0], command[1], command[2])) {
       auto edge = this->graph_->get_edge(command[0], command[1], command[2]);
       os << edge.to_string() << std::endl;
+      print_properties(os, edge.properties_to_msg());
     } else {
       os << "edge [" << command[0] << "] " << command[1] << " -> " << command[2]
          << " not found" << std::endl;
