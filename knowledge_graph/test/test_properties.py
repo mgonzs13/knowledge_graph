@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for the Properties class."""
-
 import pytest
 from knowledge_graph.graph.properties import Properties
 from knowledge_graph_msgs.msg import Property, Content

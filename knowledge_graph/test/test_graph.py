@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for the Graph class."""
-
 import pytest
 from knowledge_graph.graph.graph import Graph
 from knowledge_graph.graph.node import Node

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for the Node class."""
-
-import pytest
 from knowledge_graph.graph.node import Node
 from knowledge_graph_msgs.msg import Node as NodeMsg, Property, Content
 
