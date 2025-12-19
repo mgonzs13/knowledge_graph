@@ -32,6 +32,9 @@ protected:
 
   void SetUp() override {
     kg = KnowledgeGraph::get_instance();
+    // Clear all callbacks first to avoid dangling references from previous
+    // tests
+    kg->clear_callbacks();
     // Clear the graph before each test
     for (const auto &edge : kg->get_edges()) {
       kg->remove_edge(edge);
@@ -393,6 +396,221 @@ TEST_F(KnowledgeGraphTest, SelfLoopEdge) {
   EXPECT_EQ(edge.get_source_node(), "robot");
   EXPECT_EQ(edge.get_target_node(), "robot");
   EXPECT_TRUE(kg->has_edge("monitors", "robot", "robot"));
+}
+
+// Callback Tests
+class KnowledgeGraphCallbackTest : public ::testing::Test {
+protected:
+  std::shared_ptr<KnowledgeGraph> kg;
+  std::vector<std::tuple<std::string, std::string,
+                         std::vector<std::variant<graph::Node, graph::Edge>>>>
+      callback_data;
+
+  void SetUp() override {
+    kg = KnowledgeGraph::get_instance();
+    // Clear all callbacks first to avoid dangling references from previous
+    // tests
+    kg->clear_callbacks();
+    // Clear the graph before each test
+    for (const auto &edge : kg->get_edges()) {
+      kg->remove_edge(edge);
+    }
+    for (const auto &node : kg->get_nodes()) {
+      kg->remove_node(node);
+    }
+    callback_data.clear();
+    kg->add_callback(
+        [this](const std::string &operation, const std::string &element_type,
+               const std::vector<std::variant<graph::Node, graph::Edge>>
+                   &elements) {
+          callback_data.push_back({operation, element_type, elements});
+        });
+  }
+};
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnNodeCreate) {
+  kg->create_node("robot", "robot_type");
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+  EXPECT_EQ(std::get<2>(callback_data[0]).size(), 1u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnNodeUpdateExisting) {
+  kg->create_node("robot", "robot_type");
+  callback_data.clear();
+
+  graph::Node updated_node("robot", "new_type");
+  kg->update_node(updated_node);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "update");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnNodeUpdateNew) {
+  graph::Node new_node("robot", "robot_type");
+  kg->update_node(new_node);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnUpdateNodes) {
+  kg->create_node("robot1", "type1");
+  callback_data.clear();
+
+  std::vector<graph::Node> nodes;
+  nodes.push_back(
+      graph::Node("robot1", "new_type1")); // existing - should trigger update
+  nodes.push_back(graph::Node("robot2", "type2")); // new - should trigger add
+  kg->update_nodes(nodes);
+
+  // Should have two callbacks: one for add, one for update
+  EXPECT_EQ(callback_data.size(), 2u);
+  std::set<std::string> operations;
+  for (const auto &cb : callback_data) {
+    operations.insert(std::get<0>(cb));
+  }
+  EXPECT_EQ(operations.count("add"), 1u);
+  EXPECT_EQ(operations.count("update"), 1u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnNodeRemove) {
+  auto node = kg->create_node("robot", "robot_type");
+  callback_data.clear();
+
+  kg->remove_node(node);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnRemoveNodes) {
+  auto node1 = kg->create_node("robot1", "type1");
+  auto node2 = kg->create_node("robot2", "type2");
+  callback_data.clear();
+
+  std::vector<graph::Node> to_remove = {node1, node2};
+  kg->remove_nodes(to_remove);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+  EXPECT_EQ(std::get<2>(callback_data[0]).size(), 2u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnEdgeCreate) {
+  kg->create_node("a", "type");
+  kg->create_node("b", "type");
+  callback_data.clear();
+
+  kg->create_edge("connects", "a", "b");
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnEdgeUpdateExisting) {
+  kg->create_node("a", "type");
+  kg->create_node("b", "type");
+  kg->create_edge("connects", "a", "b");
+  callback_data.clear();
+
+  graph::Edge updated_edge("connects", "a", "b");
+  updated_edge.set_property<double>("weight", 1.0);
+  kg->update_edge(updated_edge);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "update");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnUpdateEdges) {
+  kg->create_node("a", "type");
+  kg->create_node("b", "type");
+  kg->create_edge("type1", "a", "b");
+  callback_data.clear();
+
+  std::vector<graph::Edge> edges;
+  edges.push_back(
+      graph::Edge("type1", "a", "b")); // existing - should trigger update
+  edges.push_back(graph::Edge("type2", "a", "b")); // new - should trigger add
+  kg->update_edges(edges);
+
+  // Should have two callbacks: one for add, one for update
+  EXPECT_EQ(callback_data.size(), 2u);
+  std::set<std::string> operations;
+  for (const auto &cb : callback_data) {
+    operations.insert(std::get<0>(cb));
+  }
+  EXPECT_EQ(operations.count("add"), 1u);
+  EXPECT_EQ(operations.count("update"), 1u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnEdgeRemove) {
+  kg->create_node("a", "type");
+  kg->create_node("b", "type");
+  auto edge = kg->create_edge("connects", "a", "b");
+  callback_data.clear();
+
+  kg->remove_edge(edge);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(KnowledgeGraphCallbackTest, CallbackOnRemoveEdges) {
+  kg->create_node("a", "type");
+  kg->create_node("b", "type");
+  auto edge1 = kg->create_edge("type1", "a", "b");
+  auto edge2 = kg->create_edge("type2", "a", "b");
+  callback_data.clear();
+
+  std::vector<graph::Edge> to_remove = {edge1, edge2};
+  kg->remove_edges(to_remove);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+  EXPECT_EQ(std::get<2>(callback_data[0]).size(), 2u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, MultipleCallbacks) {
+  std::vector<std::tuple<std::string, std::string,
+                         std::vector<std::variant<graph::Node, graph::Edge>>>>
+      callback_data2;
+
+  kg->add_callback(
+      [&callback_data2](
+          const std::string &operation, const std::string &element_type,
+          const std::vector<std::variant<graph::Node, graph::Edge>> &elements) {
+        callback_data2.push_back({operation, element_type, elements});
+      });
+
+  kg->create_node("robot", "robot_type");
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(callback_data2.size(), 1u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, NoCallbackOnFailedRemoveNode) {
+  graph::Node non_existent_node("nonexistent", "type");
+  kg->remove_node(non_existent_node);
+
+  EXPECT_EQ(callback_data.size(), 0u);
+}
+
+TEST_F(KnowledgeGraphCallbackTest, NoCallbackOnFailedRemoveEdge) {
+  graph::Edge non_existent_edge("connects", "a", "b");
+  kg->remove_edge(non_existent_edge);
+
+  EXPECT_EQ(callback_data.size(), 0u);
 }
 
 int main(int argc, char **argv) {

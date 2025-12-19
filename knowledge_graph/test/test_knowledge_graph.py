@@ -36,6 +36,8 @@ def rclpy_init():
 def knowledge_graph():
     """Provide a KnowledgeGraph instance for tests."""
     kg = KnowledgeGraph.get_instance()
+    # Clear all callbacks first to avoid dangling references from previous tests
+    kg.clear_callbacks()
     # Clear the graph before each test
     for edge in kg.get_edges():
         kg.remove_edge(edge)
@@ -407,3 +409,257 @@ class TestKnowledgeGraphComplexScenarios:
         assert edge.get_source_node() == "robot"
         assert edge.get_target_node() == "robot"
         assert knowledge_graph.has_edge("monitors", "robot", "robot")
+
+
+class TestKnowledgeGraphCallbacks:
+    """Test suite for KnowledgeGraph callback functionality."""
+
+    def test_add_callback(self, knowledge_graph):
+        """Test adding a callback to the knowledge graph."""
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.create_node("robot", "robot_type")
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "node"
+        assert len(callback_data[0][2]) == 1
+        assert callback_data[0][2][0].get_name() == "robot"
+
+    def test_callback_on_node_create(self, knowledge_graph):
+        """Test callback is invoked when a node is created."""
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.create_node("robot", "robot_type")
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_node_update_existing(self, knowledge_graph):
+        """Test callback is invoked when an existing node is updated."""
+        knowledge_graph.create_node("robot", "robot_type")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        updated_node = Node("robot", "new_type")
+        knowledge_graph.update_node(updated_node)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "update"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_node_update_new(self, knowledge_graph):
+        """Test callback is invoked when a new node is added via update."""
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        new_node = Node("robot", "robot_type")
+        knowledge_graph.update_node(new_node)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_update_nodes(self, knowledge_graph):
+        """Test callback is invoked when multiple nodes are updated."""
+        knowledge_graph.create_node("robot1", "type1")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        nodes = [
+            Node("robot1", "new_type1"),  # existing - should trigger update
+            Node("robot2", "type2"),  # new - should trigger add
+        ]
+        knowledge_graph.update_nodes(nodes)
+
+        # Should have two callbacks: one for add, one for update
+        assert len(callback_data) == 2
+        operations = {cb[0] for cb in callback_data}
+        assert operations == {"add", "update"}
+
+    def test_callback_on_node_remove(self, knowledge_graph):
+        """Test callback is invoked when a node is removed."""
+        node = knowledge_graph.create_node("robot", "robot_type")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.remove_node(node)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_remove_nodes(self, knowledge_graph):
+        """Test callback is invoked when multiple nodes are removed."""
+        node1 = knowledge_graph.create_node("robot1", "type1")
+        node2 = knowledge_graph.create_node("robot2", "type2")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.remove_nodes([node1, node2])
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "node"
+        assert len(callback_data[0][2]) == 2
+
+    def test_callback_on_edge_create(self, knowledge_graph):
+        """Test callback is invoked when an edge is created."""
+        knowledge_graph.create_node("a", "type")
+        knowledge_graph.create_node("b", "type")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.create_edge("connects", "a", "b")
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_edge_update_existing(self, knowledge_graph):
+        """Test callback is invoked when an existing edge is updated."""
+        knowledge_graph.create_node("a", "type")
+        knowledge_graph.create_node("b", "type")
+        knowledge_graph.create_edge("connects", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        updated_edge = Edge("connects", "a", "b")
+        updated_edge.set_property("weight", 1.0)
+        knowledge_graph.update_edge(updated_edge)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "update"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_update_edges(self, knowledge_graph):
+        """Test callback is invoked when multiple edges are updated."""
+        knowledge_graph.create_node("a", "type")
+        knowledge_graph.create_node("b", "type")
+        knowledge_graph.create_edge("type1", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        edges = [
+            Edge("type1", "a", "b"),  # existing - should trigger update
+            Edge("type2", "a", "b"),  # new - should trigger add
+        ]
+        knowledge_graph.update_edges(edges)
+
+        # Should have two callbacks: one for add, one for update
+        assert len(callback_data) == 2
+        operations = {cb[0] for cb in callback_data}
+        assert operations == {"add", "update"}
+
+    def test_callback_on_edge_remove(self, knowledge_graph):
+        """Test callback is invoked when an edge is removed."""
+        knowledge_graph.create_node("a", "type")
+        knowledge_graph.create_node("b", "type")
+        edge = knowledge_graph.create_edge("connects", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.remove_edge(edge)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_remove_edges(self, knowledge_graph):
+        """Test callback is invoked when multiple edges are removed."""
+        knowledge_graph.create_node("a", "type")
+        knowledge_graph.create_node("b", "type")
+        edge1 = knowledge_graph.create_edge("type1", "a", "b")
+        edge2 = knowledge_graph.create_edge("type2", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        knowledge_graph.remove_edges([edge1, edge2])
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "edge"
+        assert len(callback_data[0][2]) == 2
+
+    def test_multiple_callbacks(self, knowledge_graph):
+        """Test multiple callbacks can be registered and all are invoked."""
+        callback_data1 = []
+        callback_data2 = []
+
+        def callback1(operation, element_type, elements):
+            callback_data1.append((operation, element_type, elements))
+
+        def callback2(operation, element_type, elements):
+            callback_data2.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback1)
+        knowledge_graph.add_callback(callback2)
+        knowledge_graph.create_node("robot", "robot_type")
+
+        assert len(callback_data1) == 1
+        assert len(callback_data2) == 1
+
+    def test_no_callback_on_failed_remove_node(self, knowledge_graph):
+        """Test callback is not invoked when remove_node fails."""
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        non_existent_node = Node("nonexistent", "type")
+        knowledge_graph.remove_node(non_existent_node)
+
+        assert len(callback_data) == 0
+
+    def test_no_callback_on_failed_remove_edge(self, knowledge_graph):
+        """Test callback is not invoked when remove_edge fails."""
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        knowledge_graph.add_callback(callback)
+        non_existent_edge = Edge("connects", "a", "b")
+        knowledge_graph.remove_edge(non_existent_edge)
+
+        assert len(callback_data) == 0

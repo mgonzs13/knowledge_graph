@@ -118,7 +118,7 @@ void update_nodes(const std::vector<Node> &nodes);
 bool remove_node(const Node &node);
 
 // Remove multiple nodes
-void remove_nodes(const std::vector<Node> &nodes);
+const std::vector<graph::Node> remove_nodes(const std::vector<Node> &nodes);
 ```
 
 #### Edge Operations
@@ -167,7 +167,7 @@ void update_edges(const std::vector<Edge> &edges);
 bool remove_edge(const Edge &edge);
 
 // Remove multiple edges
-void remove_edges(const std::vector<Edge> &edges);
+const std::vector<graph::Edge> remove_edges(const std::vector<Edge> &edges);
 ```
 
 #### Node/Edge Properties
@@ -221,7 +221,7 @@ def update_nodes(self, nodes: List[Node]) -> None
 def remove_node(self, node: Node) -> bool
 
 # Remove multiple nodes
-def remove_nodes(self, nodes: List[Node]) -> None
+def remove_nodes(self, nodes: List[Node]) -> List[Node]
 ```
 
 #### Edge Operations
@@ -270,7 +270,7 @@ def update_edges(self, edges: List[Edge]) -> None
 def remove_edge(self, edge: Edge) -> bool
 
 # Remove multiple edges
-def remove_edges(self, edges: List[Edge]) -> None
+def remove_edges(self, edges: List[Edge]) -> List[Edge]
 ```
 
 #### Node/Edge Properties

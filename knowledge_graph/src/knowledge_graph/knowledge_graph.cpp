@@ -262,9 +262,9 @@ void KnowledgeGraph::update_nodes(const std::vector<graph::Node> &nodes) {
   std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
   std::vector<knowledge_graph_msgs::msg::Node> node_msgs;
   for (const auto &node : nodes) {
-    graph::Graph::update_node(node);
     node_msgs.push_back(node.to_msg());
   }
+  graph::Graph::update_nodes(nodes);
   this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
                        knowledge_graph_msgs::msg::GraphUpdate::NODE, node_msgs,
                        {});
@@ -282,19 +282,20 @@ bool KnowledgeGraph::remove_node(const graph::Node &node) {
   return removed;
 }
 
-void KnowledgeGraph::remove_nodes(const std::vector<graph::Node> &nodes) {
+const std::vector<graph::Node>
+KnowledgeGraph::remove_nodes(const std::vector<graph::Node> &nodes) {
   std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
-  std::vector<knowledge_graph_msgs::msg::Node> removed_nodes;
-  for (const auto &node : nodes) {
-    if (graph::Graph::remove_node(node)) {
-      removed_nodes.push_back(node.to_msg());
-    }
+  std::vector<graph::Node> removed_nodes = graph::Graph::remove_nodes(nodes);
+  std::vector<knowledge_graph_msgs::msg::Node> node_msgs;
+  for (const auto &node : removed_nodes) {
+    node_msgs.push_back(node.to_msg());
   }
   if (!removed_nodes.empty()) {
     this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
                          knowledge_graph_msgs::msg::GraphUpdate::NODE,
-                         removed_nodes, {});
+                         node_msgs, {});
   }
+  return removed_nodes;
 }
 
 graph::Edge KnowledgeGraph::create_edge(const std::string &type,
@@ -383,9 +384,9 @@ void KnowledgeGraph::update_edges(const std::vector<graph::Edge> &edges) {
   std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
   std::vector<knowledge_graph_msgs::msg::Edge> edge_msgs;
   for (const auto &edge : edges) {
-    graph::Graph::update_edge(edge);
     edge_msgs.push_back(edge.to_msg());
   }
+  graph::Graph::update_edges(edges);
   this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::UPDATE,
                        knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
                        edge_msgs);
@@ -403,17 +404,18 @@ bool KnowledgeGraph::remove_edge(const graph::Edge &edge) {
   return removed;
 }
 
-void KnowledgeGraph::remove_edges(const std::vector<graph::Edge> &edges) {
+const std::vector<graph::Edge>
+KnowledgeGraph::remove_edges(const std::vector<graph::Edge> &edges) {
   std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
-  std::vector<knowledge_graph_msgs::msg::Edge> removed_edges;
-  for (auto &edge : edges) {
-    if (graph::Graph::remove_edge(edge)) {
-      removed_edges.push_back(edge.to_msg());
-    }
+  std::vector<graph::Edge> removed_edges = graph::Graph::remove_edges(edges);
+  std::vector<knowledge_graph_msgs::msg::Edge> edge_msgs;
+  for (const auto &edge : removed_edges) {
+    edge_msgs.push_back(edge.to_msg());
   }
   if (!removed_edges.empty()) {
     this->publish_update(knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
                          knowledge_graph_msgs::msg::GraphUpdate::EDGE, {},
-                         removed_edges);
+                         edge_msgs);
   }
+  return removed_edges;
 }

@@ -125,19 +125,13 @@ class KnowledgeGraph(Graph):
         elapsed = (self._node.get_clock().now() - self._start_time).nanoseconds
         if Time(nanoseconds=elapsed).seconds_nanoseconds()[0] > 1.0:
             self._reqsync_timer.cancel()
-
-        self._publish_update(
-            GraphUpdate.REQSYNC,
-            self,
-            element_type=GraphUpdate.GRAPH,
-        )
+        self._publish_update(GraphUpdate.REQSYNC, self)
 
     def _publish_update(
         self,
         operation_type: int,
         element: Union[Node, Edge, Graph, List[Node], List[Edge]],
         target_node: str = "",
-        element_type: Optional[int] = None,
     ) -> None:
         """
         @brief Publishes a graph update message.
@@ -145,7 +139,6 @@ class KnowledgeGraph(Graph):
         @param operation_type The type of operation (UPDATE, REMOVE, etc.).
         @param element The graph element being updated.
         @param target_node Optional target node for directed updates.
-        @param element_type Optional explicit element type.
         """
         update_msg = GraphUpdate()
         update_msg.stamp = self._node.get_clock().now().to_msg()
@@ -226,12 +219,7 @@ class KnowledgeGraph(Graph):
                     self._reqsync_timer.cancel()
                     self.update_graph(remote_graph)
                 elif operation == GraphUpdate.REQSYNC and msg.node_id != self._graph_id:
-                    self._publish_update(
-                        GraphUpdate.SYNC,
-                        self,
-                        target_node=msg.node_id,
-                        element_type=GraphUpdate.GRAPH,
-                    )
+                    self._publish_update(GraphUpdate.SYNC, self, target_node=msg.node_id)
                     self.update_graph(remote_graph)
 
             # Update timestamp to the latest received
@@ -278,30 +266,26 @@ class KnowledgeGraph(Graph):
 
     def update_node(self, node: Node) -> None:
         with self._graph_mutex:
-            super().update_node(node)
+            Graph.update_node(self, node)
             self._publish_update(GraphUpdate.UPDATE, node)
 
     def update_nodes(self, nodes: List[Node]) -> None:
         with self._graph_mutex:
-            for node in nodes:
-                Graph.update_node(self, node)
+            Graph.update_nodes(self, nodes)
             self._publish_update(GraphUpdate.UPDATE, nodes)
 
     def remove_node(self, node: Node) -> bool:
         with self._graph_mutex:
-            removed = super().remove_node(node)
+            removed = Graph.remove_node(self, node)
             if removed:
                 self._publish_update(GraphUpdate.REMOVE, node)
             return removed
 
-    def remove_nodes(self, nodes: List[Node]) -> None:
+    def remove_nodes(self, nodes: List[Node]) -> List[Node]:
         with self._graph_mutex:
-            removed_nodes = []
-            for node in nodes:
-                if Graph.remove_node(self, node):
-                    removed_nodes.append(node)
-            if removed_nodes:
-                self._publish_update(GraphUpdate.REMOVE, removed_nodes)
+            removed_nodes = Graph.remove_nodes(self, nodes)
+            self._publish_update(GraphUpdate.REMOVE, removed_nodes)
+            return removed_nodes
 
     # =========================================================================
     # Edge Management Functions
@@ -354,27 +338,24 @@ class KnowledgeGraph(Graph):
 
     def update_edge(self, edge: Edge) -> None:
         with self._graph_mutex:
-            super().update_edge(edge)
+            Graph.update_edge(self, edge)
             self._publish_update(GraphUpdate.UPDATE, edge)
 
     def update_edges(self, edges: List[Edge]) -> None:
         with self._graph_mutex:
-            for edge in edges:
-                Graph.update_edge(self, edge)
+            Graph.update_edges(self, edges)
             self._publish_update(GraphUpdate.UPDATE, edges)
 
     def remove_edge(self, edge: Edge) -> bool:
         with self._graph_mutex:
-            removed = super().remove_edge(edge)
+            removed = Graph.remove_edge(self, edge)
             if removed:
                 self._publish_update(GraphUpdate.REMOVE, edge)
             return removed
 
-    def remove_edges(self, edges: List[Edge]) -> None:
+    def remove_edges(self, edges: List[Edge]) -> List[Edge]:
         with self._graph_mutex:
-            removed_edges = []
-            for edge in edges:
-                if Graph.remove_edge(self, edge):
-                    removed_edges.append(edge)
+            removed_edges = Graph.remove_edges(self, edges)
             if removed_edges:
                 self._publish_update(GraphUpdate.REMOVE, removed_edges)
+            return removed_edges

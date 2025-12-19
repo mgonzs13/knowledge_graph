@@ -406,3 +406,288 @@ class TestGraphSerialization:
         assert graph1.has_node("a")
         assert graph1.has_node("b")
         assert graph1.has_edge("connects", "a", "b")
+
+
+class TestGraphCallbacks:
+    """Test suite for Graph callback functionality."""
+
+    def test_add_callback(self):
+        """Test adding a callback to the graph."""
+        graph = Graph()
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.create_node("robot", "robot_type")
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "node"
+        assert len(callback_data[0][2]) == 1
+        assert callback_data[0][2][0].get_name() == "robot"
+
+    def test_callback_on_node_create(self):
+        """Test callback is invoked when a node is created."""
+        graph = Graph()
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.create_node("robot", "robot_type")
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_node_update_existing(self):
+        """Test callback is invoked when an existing node is updated."""
+        graph = Graph()
+        graph.create_node("robot", "robot_type")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        updated_node = Node("robot", "new_type")
+        graph.update_node(updated_node)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "update"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_node_update_new(self):
+        """Test callback is invoked when a new node is added via update."""
+        graph = Graph()
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        new_node = Node("robot", "robot_type")
+        graph.update_node(new_node)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_update_nodes(self):
+        """Test callback is invoked when multiple nodes are updated."""
+        graph = Graph()
+        graph.create_node("robot1", "type1")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        nodes = [
+            Node("robot1", "new_type1"),  # existing - should trigger update
+            Node("robot2", "type2"),  # new - should trigger add
+        ]
+        graph.update_nodes(nodes)
+
+        # Should have two callbacks: one for add, one for update
+        assert len(callback_data) == 2
+        operations = {cb[0] for cb in callback_data}
+        assert operations == {"add", "update"}
+
+    def test_callback_on_node_remove(self):
+        """Test callback is invoked when a node is removed."""
+        graph = Graph()
+        node = graph.create_node("robot", "robot_type")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.remove_node(node)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "node"
+
+    def test_callback_on_remove_nodes(self):
+        """Test callback is invoked when multiple nodes are removed."""
+        graph = Graph()
+        node1 = graph.create_node("robot1", "type1")
+        node2 = graph.create_node("robot2", "type2")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.remove_nodes([node1, node2])
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "node"
+        assert len(callback_data[0][2]) == 2
+
+    def test_callback_on_edge_create(self):
+        """Test callback is invoked when an edge is created."""
+        graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.create_edge("connects", "a", "b")
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_edge_update_existing(self):
+        """Test callback is invoked when an existing edge is updated."""
+        graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
+        graph.create_edge("connects", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        updated_edge = Edge("connects", "a", "b")
+        updated_edge.set_property("weight", 1.0)
+        graph.update_edge(updated_edge)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "update"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_edge_update_new(self):
+        """Test callback is invoked when a new edge is added via update."""
+        graph = Graph()
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        new_edge = Edge("connects", "a", "b")
+        graph.update_edge(new_edge)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "add"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_update_edges(self):
+        """Test callback is invoked when multiple edges are updated."""
+        graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
+        graph.create_edge("type1", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        edges = [
+            Edge("type1", "a", "b"),  # existing - should trigger update
+            Edge("type2", "a", "b"),  # new - should trigger add
+        ]
+        graph.update_edges(edges)
+
+        # Should have two callbacks: one for add, one for update
+        assert len(callback_data) == 2
+        operations = {cb[0] for cb in callback_data}
+        assert operations == {"add", "update"}
+
+    def test_callback_on_edge_remove(self):
+        """Test callback is invoked when an edge is removed."""
+        graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
+        edge = graph.create_edge("connects", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.remove_edge(edge)
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "edge"
+
+    def test_callback_on_remove_edges(self):
+        """Test callback is invoked when multiple edges are removed."""
+        graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
+        edge1 = graph.create_edge("type1", "a", "b")
+        edge2 = graph.create_edge("type2", "a", "b")
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        graph.remove_edges([edge1, edge2])
+
+        assert len(callback_data) == 1
+        assert callback_data[0][0] == "remove"
+        assert callback_data[0][1] == "edge"
+        assert len(callback_data[0][2]) == 2
+
+    def test_multiple_callbacks(self):
+        """Test multiple callbacks can be registered and all are invoked."""
+        graph = Graph()
+        callback_data1 = []
+        callback_data2 = []
+
+        def callback1(operation, element_type, elements):
+            callback_data1.append((operation, element_type, elements))
+
+        def callback2(operation, element_type, elements):
+            callback_data2.append((operation, element_type, elements))
+
+        graph.add_callback(callback1)
+        graph.add_callback(callback2)
+        graph.create_node("robot", "robot_type")
+
+        assert len(callback_data1) == 1
+        assert len(callback_data2) == 1
+
+    def test_no_callback_on_failed_remove_node(self):
+        """Test callback is not invoked when remove_node fails."""
+        graph = Graph()
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        non_existent_node = Node("nonexistent", "type")
+        graph.remove_node(non_existent_node)
+
+        assert len(callback_data) == 0
+
+    def test_no_callback_on_failed_remove_edge(self):
+        """Test callback is not invoked when remove_edge fails."""
+        graph = Graph()
+        callback_data = []
+
+        def callback(operation, element_type, elements):
+            callback_data.append((operation, element_type, elements))
+
+        graph.add_callback(callback)
+        non_existent_edge = Edge("connects", "a", "b")
+        graph.remove_edge(non_existent_edge)
+
+        assert len(callback_data) == 0

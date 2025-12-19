@@ -152,7 +152,8 @@ public:
    * @brief Remove nodes from the graph
    * @param nodes The nodes to remove
    */
-  void remove_nodes(const std::vector<graph::Node> &nodes) override;
+  const std::vector<graph::Node>
+  remove_nodes(const std::vector<graph::Node> &nodes) override;
 
   /************************************************************
    * Edge Management Functions
@@ -278,7 +279,8 @@ public:
    * @brief Remove edges from the graph
    * @param edges The edges to remove
    */
-  void remove_edges(const std::vector<graph::Edge> &edges) override;
+  const std::vector<graph::Edge>
+  remove_edges(const std::vector<graph::Edge> &edges) override;
 
 protected:
   /// @brief Pointer to the ROS 2 node that owns this graph.

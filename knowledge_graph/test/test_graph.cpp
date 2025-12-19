@@ -351,6 +351,217 @@ TEST_F(GraphSerializationTest, UpdateGraph) {
   EXPECT_TRUE(graph.has_edge("connects", "a", "b"));
 }
 
+// Callback Tests
+class GraphCallbackTest : public ::testing::Test {
+protected:
+  Graph graph;
+  std::vector<std::tuple<std::string, std::string,
+                         std::vector<std::variant<Node, Edge>>>>
+      callback_data;
+
+  void SetUp() override {
+    callback_data.clear();
+    graph.add_callback(
+        [this](const std::string &operation, const std::string &element_type,
+               const std::vector<std::variant<Node, Edge>> &elements) {
+          callback_data.push_back({operation, element_type, elements});
+        });
+  }
+};
+
+TEST_F(GraphCallbackTest, CallbackOnNodeCreate) {
+  graph.create_node("robot", "robot_type");
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+  EXPECT_EQ(std::get<2>(callback_data[0]).size(), 1u);
+}
+
+TEST_F(GraphCallbackTest, CallbackOnNodeUpdateExisting) {
+  graph.create_node("robot", "robot_type");
+  callback_data.clear();
+
+  Node updated_node("robot", "new_type");
+  graph.update_node(updated_node);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "update");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnNodeUpdateNew) {
+  Node new_node("robot", "robot_type");
+  graph.update_node(new_node);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnUpdateNodes) {
+  graph.create_node("robot1", "type1");
+  callback_data.clear();
+
+  std::vector<Node> nodes;
+  nodes.push_back(Node("robot1", "new_type1")); // existing - should trigger
+                                                // update
+  nodes.push_back(Node("robot2", "type2"));     // new - should trigger add
+  graph.update_nodes(nodes);
+
+  // Should have two callbacks: one for add, one for update
+  EXPECT_EQ(callback_data.size(), 2u);
+  std::set<std::string> operations;
+  for (const auto &cb : callback_data) {
+    operations.insert(std::get<0>(cb));
+  }
+  EXPECT_EQ(operations.count("add"), 1u);
+  EXPECT_EQ(operations.count("update"), 1u);
+}
+
+TEST_F(GraphCallbackTest, CallbackOnNodeRemove) {
+  auto node = graph.create_node("robot", "robot_type");
+  callback_data.clear();
+
+  graph.remove_node(node);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnRemoveNodes) {
+  auto node1 = graph.create_node("robot1", "type1");
+  auto node2 = graph.create_node("robot2", "type2");
+  callback_data.clear();
+
+  std::vector<Node> to_remove = {node1, node2};
+  graph.remove_nodes(to_remove);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "node");
+  EXPECT_EQ(std::get<2>(callback_data[0]).size(), 2u);
+}
+
+TEST_F(GraphCallbackTest, CallbackOnEdgeCreate) {
+  graph.create_node("a", "type");
+  graph.create_node("b", "type");
+  callback_data.clear();
+
+  graph.create_edge("connects", "a", "b");
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnEdgeUpdateExisting) {
+  graph.create_node("a", "type");
+  graph.create_node("b", "type");
+  graph.create_edge("connects", "a", "b");
+  callback_data.clear();
+
+  Edge updated_edge("connects", "a", "b");
+  updated_edge.set_property<double>("weight", 1.0);
+  graph.update_edge(updated_edge);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "update");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnEdgeUpdateNew) {
+  Edge new_edge("connects", "a", "b");
+  graph.update_edge(new_edge);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnUpdateEdges) {
+  graph.create_node("a", "type");
+  graph.create_node("b", "type");
+  graph.create_edge("type1", "a", "b");
+  callback_data.clear();
+
+  std::vector<Edge> edges;
+  edges.push_back(Edge("type1", "a", "b")); // existing - should trigger update
+  edges.push_back(Edge("type2", "a", "b")); // new - should trigger add
+  graph.update_edges(edges);
+
+  // Should have two callbacks: one for add, one for update
+  EXPECT_EQ(callback_data.size(), 2u);
+  std::set<std::string> operations;
+  for (const auto &cb : callback_data) {
+    operations.insert(std::get<0>(cb));
+  }
+  EXPECT_EQ(operations.count("add"), 1u);
+  EXPECT_EQ(operations.count("update"), 1u);
+}
+
+TEST_F(GraphCallbackTest, CallbackOnEdgeRemove) {
+  graph.create_node("a", "type");
+  graph.create_node("b", "type");
+  auto edge = graph.create_edge("connects", "a", "b");
+  callback_data.clear();
+
+  graph.remove_edge(edge);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+}
+
+TEST_F(GraphCallbackTest, CallbackOnRemoveEdges) {
+  graph.create_node("a", "type");
+  graph.create_node("b", "type");
+  auto edge1 = graph.create_edge("type1", "a", "b");
+  auto edge2 = graph.create_edge("type2", "a", "b");
+  callback_data.clear();
+
+  std::vector<Edge> to_remove = {edge1, edge2};
+  graph.remove_edges(to_remove);
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(std::get<0>(callback_data[0]), "remove");
+  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+  EXPECT_EQ(std::get<2>(callback_data[0]).size(), 2u);
+}
+
+TEST_F(GraphCallbackTest, MultipleCallbacks) {
+  std::vector<std::tuple<std::string, std::string,
+                         std::vector<std::variant<Node, Edge>>>>
+      callback_data2;
+
+  graph.add_callback(
+      [&callback_data2](const std::string &operation,
+                        const std::string &element_type,
+                        const std::vector<std::variant<Node, Edge>> &elements) {
+        callback_data2.push_back({operation, element_type, elements});
+      });
+
+  graph.create_node("robot", "robot_type");
+
+  EXPECT_EQ(callback_data.size(), 1u);
+  EXPECT_EQ(callback_data2.size(), 1u);
+}
+
+TEST_F(GraphCallbackTest, NoCallbackOnFailedRemoveNode) {
+  Node non_existent_node("nonexistent", "type");
+  graph.remove_node(non_existent_node);
+
+  EXPECT_EQ(callback_data.size(), 0u);
+}
+
+TEST_F(GraphCallbackTest, NoCallbackOnFailedRemoveEdge) {
+  Edge non_existent_edge("connects", "a", "b");
+  graph.remove_edge(non_existent_edge);
+
+  EXPECT_EQ(callback_data.size(), 0u);
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

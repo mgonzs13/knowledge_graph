@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <functional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "knowledge_graph/graph/edge.hpp"
@@ -59,6 +61,23 @@ knowledge_graph_msgs::msg::Graph Graph::to_msg() const {
   return graph_msg;
 }
 
+void Graph::add_callback(
+    std::function<void(const std::string &, const std::string &,
+                       const std::vector<std::variant<Node, Edge>> &)>
+        callback) {
+  this->callbacks_.push_back(callback);
+}
+
+void Graph::clear_callbacks() { this->callbacks_.clear(); }
+
+void Graph::notify_callbacks(
+    const std::string &operation, const std::string &element_type,
+    const std::vector<std::variant<Node, Edge>> &elements) {
+  for (auto &cb : this->callbacks_) {
+    cb(operation, element_type, elements);
+  }
+}
+
 /************************************************************
  * Node Management Functions
  ************************************************************/
@@ -69,6 +88,7 @@ Node Graph::create_node(const std::string &name, const std::string &type) {
 
   Node node(name, type);
   this->nodes_.push_back(node);
+  this->notify_callbacks("add", "node", {node});
   return node;
 }
 
@@ -94,23 +114,50 @@ Node Graph::get_node(const std::string &name) const {
   throw std::runtime_error("Node not found: " + name);
 }
 
-void Graph::update_node(const Node &node) {
+bool Graph::update_node_internal(const Node &node) {
+  bool existing = false;
   for (auto &existing_node : this->nodes_) {
     if (existing_node.get_name() == node.get_name()) {
       existing_node = node;
-      return;
+      existing = true;
+      break;
     }
   }
-  this->nodes_.push_back(node);
+  if (!existing) {
+    this->nodes_.push_back(node);
+  }
+  return existing;
+}
+
+void Graph::update_node(const Node &node) {
+  bool existing = this->update_node_internal(node);
+  this->notify_callbacks(existing ? "update" : "add", "node", {node});
 }
 
 void Graph::update_nodes(const std::vector<Node> &nodes) {
+  std::vector<Node> added;
+  std::vector<Node> updated;
   for (const auto &node : nodes) {
-    this->update_node(node);
+    bool existing = this->update_node_internal(node);
+    if (existing) {
+      updated.push_back(node);
+    } else {
+      added.push_back(node);
+    }
+  }
+  if (!added.empty()) {
+    this->notify_callbacks(
+        "add", "node",
+        std::vector<std::variant<Node, Edge>>(added.begin(), added.end()));
+  }
+  if (!updated.empty()) {
+    this->notify_callbacks(
+        "update", "node",
+        std::vector<std::variant<Node, Edge>>(updated.begin(), updated.end()));
   }
 }
 
-bool Graph::remove_node(const Node &node) {
+bool Graph::remove_node_internal(const Node &node) {
   for (auto it = this->nodes_.begin(); it != this->nodes_.end(); ++it) {
     if (it->get_name() == node.get_name()) {
       this->nodes_.erase(it);
@@ -120,10 +167,27 @@ bool Graph::remove_node(const Node &node) {
   return false;
 }
 
-void Graph::remove_nodes(const std::vector<Node> &nodes) {
-  for (const auto &node : nodes) {
-    this->remove_node(node);
+bool Graph::remove_node(const Node &node) {
+  bool removed = this->remove_node_internal(node);
+  if (removed) {
+    this->notify_callbacks("remove", "node", {node});
   }
+  return removed;
+}
+
+const std::vector<Node> Graph::remove_nodes(const std::vector<Node> &nodes) {
+  std::vector<Node> removed;
+  for (const auto &node : nodes) {
+    if (this->remove_node_internal(node)) {
+      removed.push_back(node);
+    }
+  }
+  if (!removed.empty()) {
+    this->notify_callbacks(
+        "remove", "node",
+        std::vector<std::variant<Node, Edge>>(removed.begin(), removed.end()));
+  }
+  return removed;
 }
 
 /************************************************************
@@ -146,6 +210,7 @@ Edge Graph::create_edge(const std::string &type, const std::string &source_node,
 
   Edge edge(type, source_node, target_node);
   this->edges_.push_back(edge);
+  this->notify_callbacks("add", "edge", {edge});
   return edge;
 }
 
@@ -218,36 +283,84 @@ Edge Graph::get_edge(const std::string &type, const std::string &source_node,
                            " to " + target_node);
 }
 
-void Graph::update_edge(const Edge &edge) {
+bool Graph::update_edge_internal(const Edge &edge) {
+  bool existing = false;
   for (auto &existing_edge : this->edges_) {
     if (existing_edge.get_type() == edge.get_type() &&
         existing_edge.get_source_node() == edge.get_source_node() &&
         existing_edge.get_target_node() == edge.get_target_node()) {
       existing_edge = edge;
-      return;
+      existing = true;
+      break;
     }
   }
-  this->edges_.push_back(edge);
+  if (!existing) {
+    this->edges_.push_back(edge);
+  }
+  return existing;
+}
+
+void Graph::update_edge(const Edge &edge) {
+  bool existing = this->update_edge_internal(edge);
+  this->notify_callbacks(existing ? "update" : "add", "edge", {edge});
 }
 
 void Graph::update_edges(const std::vector<Edge> &edges) {
+  std::vector<Edge> added;
+  std::vector<Edge> updated;
   for (const auto &edge : edges) {
-    this->update_edge(edge);
+    bool existing = this->update_edge_internal(edge);
+    if (existing) {
+      updated.push_back(edge);
+    } else {
+      added.push_back(edge);
+    }
   }
+  if (!added.empty()) {
+    this->notify_callbacks(
+        "add", "edge",
+        std::vector<std::variant<Node, Edge>>(added.begin(), added.end()));
+  }
+  if (!updated.empty()) {
+    this->notify_callbacks(
+        "update", "edge",
+        std::vector<std::variant<Node, Edge>>(updated.begin(), updated.end()));
+  }
+}
+
+bool Graph::remove_edge_internal(const Edge &edge) {
+  for (auto it = this->edges_.begin(); it != this->edges_.end(); ++it) {
+    if (it->get_type() == edge.get_type() &&
+        it->get_source_node() == edge.get_source_node() &&
+        it->get_target_node() == edge.get_target_node()) {
+      this->edges_.erase(it);
+      return true;
+    }
+  }
+  return false;
 }
 
 bool Graph::remove_edge(const Edge &edge) {
-  return this->remove_edges_if([&](const Edge &e) {
-    return e.get_type() == edge.get_type() &&
-           e.get_source_node() == edge.get_source_node() &&
-           e.get_target_node() == edge.get_target_node();
-  });
+  bool removed = this->remove_edge_internal(edge);
+  if (removed) {
+    this->notify_callbacks("remove", "edge", {edge});
+  }
+  return removed;
 }
 
-void Graph::remove_edges(const std::vector<Edge> &edges) {
+const std::vector<Edge> Graph::remove_edges(const std::vector<Edge> &edges) {
+  std::vector<Edge> removed;
   for (auto &edge : edges) {
-    this->remove_edge(edge);
+    if (this->remove_edge_internal(edge)) {
+      removed.push_back(edge);
+    }
   }
+  if (!removed.empty()) {
+    this->notify_callbacks(
+        "remove", "edge",
+        std::vector<std::variant<Node, Edge>>(removed.begin(), removed.end()));
+  }
+  return removed;
 }
 
 template <typename Predicate>

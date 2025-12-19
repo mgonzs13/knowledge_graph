@@ -16,7 +16,9 @@
 #define KNOWLEDGE__GRAPH__GRAPH_HPP_
 
 #include <algorithm>
+#include <functional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "knowledge_graph/graph/edge.hpp"
@@ -59,6 +61,20 @@ public:
    * @return The Graph message representation of the graph
    */
   knowledge_graph_msgs::msg::Graph to_msg() const;
+
+  /**
+   * @brief Add a callback to be called when the graph is updated
+   * @param callback The callback function
+   */
+  void add_callback(
+      std::function<void(const std::string &, const std::string &,
+                         const std::vector<std::variant<Node, Edge>> &)>
+          callback);
+
+  /**
+   * @brief Clear all registered callbacks
+   */
+  void clear_callbacks();
 
   /************************************************************
    * Node Management Functions
@@ -122,7 +138,7 @@ public:
    * @brief Remove nodes from the graph
    * @param nodes The nodes to remove
    */
-  virtual void remove_nodes(const std::vector<Node> &nodes);
+  virtual const std::vector<Node> remove_nodes(const std::vector<Node> &nodes);
 
   /************************************************************
    * Edge Management Functions
@@ -247,9 +263,38 @@ public:
    * @brief Remove edges from the graph
    * @param edges The edges to remove
    */
-  virtual void remove_edges(const std::vector<Edge> &edges);
+  virtual const std::vector<graph::Edge>
+  remove_edges(const std::vector<Edge> &edges);
 
 protected:
+  /**
+   * @brief Internal update node without notification
+   * @param node The node to update
+   * @return True if the node was updated (existed), false if it was added (new)
+   */
+  bool update_node_internal(const Node &node);
+
+  /**
+   * @brief Internal remove node without notification
+   * @param node The node to remove
+   * @return True if the node was removed, false if it was not found
+   */
+  bool remove_node_internal(const Node &node);
+
+  /**
+   * @brief Internal update edge without notification
+   * @param edge The edge to update
+   * @return True if the edge was updated (existed), false if it was added (new)
+   */
+  bool update_edge_internal(const Edge &edge);
+
+  /**
+   * @brief Internal remove edge without notification
+   * @param edge The edge to remove
+   * @return True if the edge was removed, false if it was not found
+   */
+  bool remove_edge_internal(const Edge &edge);
+
   /**
    * @brief Filter edges based on a predicate
    * @tparam Predicate The type of the predicate function
@@ -267,11 +312,26 @@ protected:
    */
   template <typename Predicate> bool remove_edges_if(Predicate pred);
 
+  /**
+   * @brief Notify all registered callbacks
+   * @param operation The operation ('add', 'update', 'remove')
+   * @param element_type The element type ('node' or 'edge')
+   * @param elements The elements (Nodes or Edges)
+   */
+  void notify_callbacks(const std::string &operation,
+                        const std::string &element_type,
+                        const std::vector<std::variant<Node, Edge>> &elements);
+
 private:
   /// @brief Vector of nodes in the graph
   std::vector<Node> nodes_;
   /// @brief Vector of edges in the graph
   std::vector<Edge> edges_;
+  /// @brief Vector of registered callbacks
+  std::vector<
+      std::function<void(const std::string &, const std::string &,
+                         const std::vector<std::variant<Node, Edge>> &)>>
+      callbacks_;
 };
 
 } // namespace graph
