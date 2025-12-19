@@ -59,7 +59,7 @@ colcon test-result --verbose
 #include "rclcpp/rclcpp.hpp"
 #include "knowledge_graph/knowledge_graph.hpp"
 
-int master(int argc, char ** argv) {
+int main(int argc, char ** argv) {
   rclcpp::init(argc, argv);
   auto graph = KnowledgeGraph::get_instance()  rclcpp::spin(node);
   rclcpp::shutdown();
@@ -74,14 +74,14 @@ import rclpy
 from knowledge_graph import KnowledgeGraph
 
 
-def master():
+def main():
   rclpy.init()
   graph = KnowledgeGraph.get_instance()
   rclpy.shutdown()
 
 
 if __name__ == "__master__":
-    master()
+    main()
 ```
 
 ## API
