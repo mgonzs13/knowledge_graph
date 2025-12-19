@@ -80,12 +80,11 @@ class KnowledgeGraph(Graph):
         if Time(nanoseconds=elapsed).seconds_nanoseconds()[0] > 1.0:
             self._reqsync_timer.cancel()
 
-        with self._graph_mutex:
-            self._publish_update(
-                GraphUpdate.REQSYNC,
-                self,
-                element_type=GraphUpdate.GRAPH,
-            )
+        self._publish_update(
+            GraphUpdate.REQSYNC,
+            self,
+            element_type=GraphUpdate.GRAPH,
+        )
 
     def _publish_update(
         self,
@@ -173,7 +172,7 @@ class KnowledgeGraph(Graph):
                 elif operation == GraphUpdate.REMOVE:
                     for edge_msg in msg.edges:
                         edge = Edge(msg=edge_msg)
-                        Graph.remove_edge(edge)
+                        Graph.remove_edge(self, edge)
 
             elif element == GraphUpdate.GRAPH:
                 remote_graph = Graph(msg=msg.graph)
@@ -193,7 +192,7 @@ class KnowledgeGraph(Graph):
             self._last_ts = max(self._last_ts, ts)
 
     # =========================================================================
-    # Overridden Methods
+    # Graph Management Functions
     # =========================================================================
     def update_graph(self, graph: Graph) -> None:
         with self._graph_mutex:
@@ -202,11 +201,34 @@ class KnowledgeGraph(Graph):
             for edge in graph.get_edges():
                 Graph.update_edge(self, edge)
 
+    def to_msg(self):
+        with self._graph_mutex:
+            return super().to_msg()
+
+    # =========================================================================
+    # Node Management Functions
+    # =========================================================================
     def create_node(self, name: str, type_: str) -> Node:
         with self._graph_mutex:
             node = super().create_node(name, type_)
             self._publish_update(GraphUpdate.UPDATE, node)
             return node
+
+    def has_node(self, name: str) -> bool:
+        with self._graph_mutex:
+            return super().has_node(name)
+
+    def get_num_nodes(self) -> int:
+        with self._graph_mutex:
+            return super().get_num_nodes()
+
+    def get_nodes(self) -> List[Node]:
+        with self._graph_mutex:
+            return super().get_nodes()
+
+    def get_node(self, name: str) -> Node:
+        with self._graph_mutex:
+            return super().get_node(name)
 
     def update_node(self, node: Node) -> None:
         with self._graph_mutex:
@@ -235,11 +257,54 @@ class KnowledgeGraph(Graph):
             if removed_nodes:
                 self._publish_update(GraphUpdate.REMOVE, removed_nodes)
 
+    # =========================================================================
+    # Edge Management Functions
+    # =========================================================================
     def create_edge(self, type_: str, source_node: str, target_node: str) -> Edge:
         with self._graph_mutex:
             edge = super().create_edge(type_, source_node, target_node)
             self._publish_update(GraphUpdate.UPDATE, edge)
             return edge
+
+    def has_edge(self, type: str, source_node: str, target_node: str) -> bool:
+        with self._graph_mutex:
+            return super().has_edge(type, source_node, target_node)
+
+    def get_num_edges(self) -> int:
+        with self._graph_mutex:
+            return super().get_num_edges()
+
+    def get_edges(self) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges()
+
+    def get_edges_from_node(self, source_node: str) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges_from_node(source_node)
+
+    def get_edges_to_node(self, target_node: str) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges_to_node(target_node)
+
+    def get_edges_between_nodes(self, source_node: str, target_node: str) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges_between_nodes(source_node, target_node)
+
+    def get_edges_by_type(self, type: str) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges_by_type(type)
+
+    def get_edges_from_node_by_type(self, type: str, source_node: str) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges_from_node_by_type(type, source_node)
+
+    def get_edges_to_node_by_type(self, type: str, target_node: str) -> List[Edge]:
+        with self._graph_mutex:
+            return super().get_edges_to_node_by_type(type, target_node)
+
+    def get_edge(self, type: str, source_node: str, target_node: str) -> Edge:
+        with self._graph_mutex:
+            return super().get_edge(type, source_node, target_node)
 
     def update_edge(self, edge: Edge) -> None:
         with self._graph_mutex:

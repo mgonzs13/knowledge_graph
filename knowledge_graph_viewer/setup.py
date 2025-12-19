@@ -27,7 +27,9 @@ setup(
         "knowledge_graph_viewer provides a GUI plugin for visualizing the BICA graph."
     ),
     license="BSD",
-    tests_require=["pytest"],
+    extras_require={
+        "test": ["pytest"],
+    },
     entry_points={
         "console_scripts": [
             "rqt_knowledge_graph = knowledge_graph_viewer.main:main",
