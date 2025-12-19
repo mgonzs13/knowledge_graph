@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <random>
 #include <shared_mutex>
 #include <string>
 #include <vector>
@@ -26,7 +27,6 @@
 #include "knowledge_graph_msgs/msg/node.hpp"
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 using namespace knowledge_graph;
 
@@ -39,7 +39,42 @@ static constexpr double SYNC_TIMEOUT_SEC = 1.0;
 /// @brief Timer interval for synchronization requests in milliseconds.
 static constexpr std::chrono::milliseconds SYNC_TIMER_INTERVAL{100};
 
-KnowledgeGraph::KnowledgeGraph(rclcpp::Node *node_ptr) : node(node_ptr) {
+/**
+ * @brief Generates a unique UUID as a string.
+ *
+ * This function uses random numbers to generate a 16-character hexadecimal
+ * UUID.
+ *
+ * @return A string containing a 16-character hexadecimal UUID.
+ */
+inline std::string generateUUID() {
+  static constexpr char hex_digits[] = "0123456789abcdef";
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, 15);
+
+  std::string result;
+  result.reserve(16);
+  for (int i = 0; i < 16; ++i) {
+    result += hex_digits[dis(gen)];
+  }
+  return result;
+}
+
+KnowledgeGraph::KnowledgeGraph() {
+
+  this->node = std::make_shared<rclcpp::Node>("knowledge_graph_" +
+                                              generateUUID() + "_node");
+  // Add this node's base interface to the executor for multi-threaded
+  // execution.
+  this->executor.add_node(this->node->get_node_base_interface());
+
+  // Initialize and detach the spin thread to run the executor asynchronously.
+  this->spin_thread =
+      std::make_unique<std::thread>(&rclcpp::Executor::spin, &this->executor);
+
+  // Detach the spin thread to allow background execution.
+  this->spin_thread->detach();
 
   this->graph_id = this->node->get_name();
 

@@ -20,6 +20,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <thread>
 
 #include "knowledge_graph/graph/graph.hpp"
 
@@ -29,7 +30,6 @@
 #include "knowledge_graph_msgs/msg/node.hpp"
 
 #include "rclcpp/rclcpp.hpp"
-#include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 namespace knowledge_graph {
 
@@ -44,25 +44,31 @@ namespace knowledge_graph {
 class KnowledgeGraph : public graph::Graph {
 public:
   /**
-   * @brief Constructs a KnowledgeGraph with a raw pointer to a ROS 2 node.
+   * @brief Provides access to the singleton instance of KnowledgeGraph.
+   *
+   * This method ensures there is only one instance of KnowledgeGraph running.
+   *
+   * @return A shared pointer to the singleton instance of KnowledgeGraph.
    */
-  explicit KnowledgeGraph(rclcpp::Node *node_ptr);
+  static std::shared_ptr<KnowledgeGraph> get_instance() {
+    // Ensure ROS 2 is initialized
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
+    }
+
+    // Create the singleton instance if it doesn't exist
+    static std::shared_ptr<KnowledgeGraph> instance =
+        std::shared_ptr<KnowledgeGraph>(new KnowledgeGraph());
+    return instance;
+  }
 
   /**
-   * @brief Constructs a KnowledgeGraph with a shared pointer to a ROS 2 node.
-   * @param provided_node Shared pointer to the ROS 2 node that owns this graph.
+   * @brief Deleted copy constructor to prevent copying of the singleton
+   * instance.
+   *
+   * @param other Another instance of KnowledgeGraph (unused).
    */
-  explicit KnowledgeGraph(rclcpp::Node::SharedPtr provided_node)
-      : KnowledgeGraph(provided_node.get()) {}
-
-  /**
-   * @brief Constructs a KnowledgeGraph with a lifecycle node.
-   * @param provided_node Shared pointer to the lifecycle node that owns this
-   * graph.
-   */
-  explicit KnowledgeGraph(
-      rclcpp_lifecycle::LifecycleNode::SharedPtr provided_node)
-      : KnowledgeGraph((rclcpp::Node *)provided_node.get()) {}
+  KnowledgeGraph(KnowledgeGraph &other) = delete;
 
   /**
    * @brief Default destructor.
@@ -72,7 +78,6 @@ public:
   /************************************************************
    * Graph Management Functions
    ************************************************************/
-
   /**
    * @brief Update the graph with another graph
    * @param graph The graph to update from
@@ -88,7 +93,6 @@ public:
   /************************************************************
    * Node Management Functions
    ************************************************************/
-
   /**
    * @brief Create a new node in the graph
    * @param name The name of the node
@@ -153,7 +157,6 @@ public:
   /************************************************************
    * Edge Management Functions
    ************************************************************/
-
   /**
    * @brief Create a new edge in the graph
    * @param type The type of the edge
@@ -279,13 +282,18 @@ public:
 
 protected:
   /// @brief Pointer to the ROS 2 node that owns this graph.
-  rclcpp::Node *node;
+  rclcpp::Node::SharedPtr node;
 
   /// @brief Unique identifier for this graph instance.
   std::string graph_id;
 
   /// @brief Timestamp of the last graph modification.
   rclcpp::Time last_ts;
+
+  /**
+   * @brief Constructor initializing the KnowledgeGraph.
+   */
+  explicit KnowledgeGraph();
 
   /**
    * @brief Callback for handling incoming graph update messages.
@@ -311,14 +319,26 @@ protected:
                  const std::vector<knowledge_graph_msgs::msg::Edge> &edges);
 
 private:
+  /// Executor for managing multiple threads.
+#if __has_include("rclcpp/version.h")
+#include "rclcpp/version.h"
+#if RCLCPP_VERSION_GTE(29, 1, 1) // Jazzy, Kilted and Rolling
+  rclcpp::experimental::executors::EventsExecutor executor;
+#else // Humble, Iron and Jazzy
+  rclcpp::executors::MultiThreadedExecutor executor;
+#endif
+#else // Foxy and Galactic
+  rclcpp::executors::MultiThreadedExecutor executor;
+#endif
+  /// Thread for spinning the node.
+  std::unique_ptr<std::thread> spin_thread;
+
   /// @brief Publisher for graph update messages.
   rclcpp::Publisher<knowledge_graph_msgs::msg::GraphUpdate>::SharedPtr
       update_pub;
-
   /// @brief Subscriber for graph update messages.
   rclcpp::Subscription<knowledge_graph_msgs::msg::GraphUpdate>::SharedPtr
       update_sub;
-
   /// @brief Timer for periodic synchronization requests.
   rclcpp::TimerBase::SharedPtr reqsync_timer;
 

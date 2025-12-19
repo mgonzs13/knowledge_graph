@@ -15,85 +15,69 @@
 # limitations under the License.
 
 import rclpy
-from rclpy.node import Node
-
 from knowledge_graph import KnowledgeGraph
 
 
-class KnowledgeGraphDemo(Node):
-    def __init__(self):
-        super().__init__("knowledge_graph_demo")
-        # Initialize the knowledge graph
-        self.graph_ = KnowledgeGraph(self)
+def main():
+    # Initialize rclpy
+    rclpy.init()
 
-        # Create instances (nodes)
-        self.create_instances()
+    # Initialize the knowledge graph
+    graph = KnowledgeGraph.get_instance()
 
-        # Create predicates (edges)
-        self.create_predicates()
+    # Create robot instance
+    graph.create_node("leia", "robot")
 
-        # Print the graph
-        self.print_graph()
+    # Create room instances
+    graph.create_node("entrance", "room")
+    graph.create_node("kitchen", "room")
+    graph.create_node("bedroom", "room")
+    graph.create_node("dinning", "room")
+    graph.create_node("bathroom", "room")
+    graph.create_node("chargingroom", "room")
 
-    def create_instances(self):
-        # Create robot instance
-        self.graph_.create_node("leia", "robot")
+    # Connected predicates (bidirectional)
+    graph.create_edge("connected", "entrance", "dinning")
+    graph.create_edge("connected", "dinning", "entrance")
 
-        # Create room instances
-        self.graph_.create_node("entrance", "room")
-        self.graph_.create_node("kitchen", "room")
-        self.graph_.create_node("bedroom", "room")
-        self.graph_.create_node("dinning", "room")
-        self.graph_.create_node("bathroom", "room")
-        self.graph_.create_node("chargingroom", "room")
+    graph.create_edge("connected", "dinning", "kitchen")
+    graph.create_edge("connected", "kitchen", "dinning")
 
-    def create_predicates(self):
-        # Connected predicates (bidirectional)
-        self.graph_.create_edge("connected", "entrance", "dinning")
-        self.graph_.create_edge("connected", "dinning", "entrance")
+    graph.create_edge("connected", "dinning", "bedroom")
+    graph.create_edge("connected", "bedroom", "dinning")
 
-        self.graph_.create_edge("connected", "dinning", "kitchen")
-        self.graph_.create_edge("connected", "kitchen", "dinning")
+    graph.create_edge("connected", "bathroom", "bedroom")
+    graph.create_edge("connected", "bedroom", "bathroom")
 
-        self.graph_.create_edge("connected", "dinning", "bedroom")
-        self.graph_.create_edge("connected", "bedroom", "dinning")
+    graph.create_edge("connected", "chargingroom", "kitchen")
+    graph.create_edge("connected", "kitchen", "chargingroom")
 
-        self.graph_.create_edge("connected", "bathroom", "bedroom")
-        self.graph_.create_edge("connected", "bedroom", "bathroom")
+    # Other predicates
+    graph.create_edge("charging_point_at", "chargingroom", "chargingroom")
+    graph.create_edge("battery_low", "leia", "leia")
 
-        self.graph_.create_edge("connected", "chargingroom", "kitchen")
-        self.graph_.create_edge("connected", "kitchen", "chargingroom")
+    graph.create_edge("robot_at", "leia", "entrance")
 
-        # Other predicates
-        self.graph_.create_edge("charging_point_at", "chargingroom", "chargingroom")
-        self.graph_.create_edge("battery_low", "leia", "leia")
+    # Goal predicate
+    goal_edge = graph.create_edge("robot_at", "leia", "bathroom")
+    goal_edge.set_property("is_goal", True)
+    graph.update_edge(goal_edge)
 
-        self.graph_.create_edge("robot_at", "leia", "entrance")
+    # Print the graph
+    print("Knowledge Graph Demo")
+    print("====================")
 
-        # Goal predicate
-        goal_edge = self.graph_.create_edge("robot_at", "leia", "bathroom")
-        goal_edge.set_property("is_goal", True)
-        self.graph_.update_edge(goal_edge)
+    nodes = graph.get_nodes()
+    print(f"Nodes ({len(nodes)}):")
+    for node in nodes:
+        print(f"  {node.to_string()}")
 
-    def print_graph(self):
-        self.get_logger().info("Knowledge Graph Demo")
-        self.get_logger().info("====================")
+    edges = graph.get_edges()
+    print(f"Edges ({len(edges)}):")
+    for edge in edges:
+        print(f"  {edge.to_string()}")
 
-        nodes = self.graph_.get_nodes()
-        self.get_logger().info(f"Nodes ({len(nodes)}):")
-        for node in nodes:
-            self.get_logger().info(f"  {node.to_string()}")
-
-        edges = self.graph_.get_edges()
-        self.get_logger().info(f"Edges ({len(edges)}):")
-        for edge in edges:
-            self.get_logger().info(f"  {edge.to_string()}")
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = KnowledgeGraphDemo()
-    rclpy.spin(node)
+    # Shutdown rclpy
     rclpy.shutdown()
 
 

@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
 find_package(knowledge_graph_msgs REQUIRED)
 
 include_directories(include)
@@ -28,7 +27,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_link_libraries(${PROJECT_NAME}
   rclcpp::rclcpp
-  rclcpp_lifecycle::rclcpp_lifecycle
   ${knowledge_graph_msgs_TARGETS}
 )
 install(TARGETS
@@ -40,7 +38,7 @@ install(TARGETS
 )
 
 ament_export_targets(${PROJECT_NAME}Targets HAS_LIBRARY_TARGET)
-ament_export_dependencies(rclcpp rclcpp_lifecycle knowledge_graph_msgs)
+ament_export_dependencies(rclcpp knowledge_graph_msgs)
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_python_install_package(${PROJECT_NAME})

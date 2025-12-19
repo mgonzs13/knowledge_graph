@@ -18,7 +18,6 @@ import pytest
 from knowledge_graph.graph.graph import Graph
 from knowledge_graph.graph.node import Node
 from knowledge_graph.graph.edge import Edge
-from knowledge_graph_msgs.msg import Graph as GraphMsg
 
 
 class TestGraphNodes:

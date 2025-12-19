@@ -37,7 +37,7 @@
 
 namespace knowledge_graph_terminal {
 
-static knowledge_graph::KnowledgeGraph *current_graph = nullptr;
+Terminal *Terminal::current_terminal_ = nullptr;
 
 std::vector<std::string> tokenize(const std::string &text,
                                   const std::string delim) {
@@ -142,7 +142,7 @@ void pop_front(std::vector<std::string> &tokens) {
 }
 
 // LCOV_EXCL_START
-char *completion_generator(const char *text, int state) {
+char *Terminal::completion_generator(const char *text, int state) {
   // This function is called with state=0 the first time; subsequent calls are
   // with a nonzero state. state=0 can be used to perform one-time
   // initialization for this completion session.
@@ -173,8 +173,8 @@ char *completion_generator(const char *text, int state) {
     } else if (current_text[0] == "get") {
       if (current_text[1] == "node" && current_text.size() == 3) {
         // complete node names
-        if (current_graph) {
-          const auto &nodes = current_graph->get_nodes();
+        if (current_terminal_->graph_) {
+          const auto &nodes = current_terminal_->graph_->get_nodes();
           for (const auto &node : nodes) {
             candidates.push_back(node.get_name());
           }
@@ -182,8 +182,8 @@ char *completion_generator(const char *text, int state) {
       } else if (current_text[1] == "edge") {
         if (current_text.size() == 3) {
           // complete edge types
-          if (current_graph) {
-            const auto &edges = current_graph->get_edges();
+          if (current_terminal_->graph_) {
+            const auto &edges = current_terminal_->graph_->get_edges();
             std::set<std::string> types;
             for (const auto &edge : edges) {
               types.insert(edge.get_type());
@@ -192,8 +192,8 @@ char *completion_generator(const char *text, int state) {
           }
         } else if (current_text.size() == 4) {
           // complete sources for the given type
-          if (current_graph) {
-            const auto &edges = current_graph->get_edges();
+          if (current_terminal_->graph_) {
+            const auto &edges = current_terminal_->graph_->get_edges();
             std::set<std::string> sources;
             for (const auto &edge : edges) {
               if (edge.get_type() == current_text[2]) {
@@ -204,8 +204,8 @@ char *completion_generator(const char *text, int state) {
           }
         } else if (current_text.size() == 5) {
           // complete targets for the given type and source
-          if (current_graph) {
-            const auto &edges = current_graph->get_edges();
+          if (current_terminal_->graph_) {
+            const auto &edges = current_terminal_->graph_->get_edges();
             std::set<std::string> targets;
             for (const auto &edge : edges) {
               if (edge.get_type() == current_text[2] &&
@@ -220,8 +220,8 @@ char *completion_generator(const char *text, int state) {
     } else if (current_text[0] == "remove") {
       if (current_text[1] == "node" && current_text.size() == 3) {
         // complete node names
-        if (current_graph) {
-          const auto &nodes = current_graph->get_nodes();
+        if (current_terminal_->graph_) {
+          const auto &nodes = current_terminal_->graph_->get_nodes();
           for (const auto &node : nodes) {
             candidates.push_back(node.get_name());
           }
@@ -229,8 +229,8 @@ char *completion_generator(const char *text, int state) {
       } else if (current_text[1] == "edge") {
         if (current_text.size() == 3) {
           // complete edge types
-          if (current_graph) {
-            const auto &edges = current_graph->get_edges();
+          if (current_terminal_->graph_) {
+            const auto &edges = current_terminal_->graph_->get_edges();
             std::set<std::string> types;
             for (const auto &edge : edges) {
               types.insert(edge.get_type());
@@ -239,8 +239,8 @@ char *completion_generator(const char *text, int state) {
           }
         } else if (current_text.size() == 4) {
           // complete sources for the given type
-          if (current_graph) {
-            const auto &edges = current_graph->get_edges();
+          if (current_terminal_->graph_) {
+            const auto &edges = current_terminal_->graph_->get_edges();
             std::set<std::string> sources;
             for (const auto &edge : edges) {
               if (edge.get_type() == current_text[2]) {
@@ -251,8 +251,8 @@ char *completion_generator(const char *text, int state) {
           }
         } else if (current_text.size() == 5) {
           // complete targets for the given type and source
-          if (current_graph) {
-            const auto &edges = current_graph->get_edges();
+          if (current_terminal_->graph_) {
+            const auto &edges = current_terminal_->graph_->get_edges();
             std::set<std::string> targets;
             for (const auto &edge : edges) {
               if (edge.get_type() == current_text[2] &&
@@ -283,7 +283,7 @@ char *completion_generator(const char *text, int state) {
   }
 }
 
-char **completer(const char *text, int start, int end) {
+char **Terminal::completer(const char *text, int start, int end) {
   // Don't do filename completion even if our generator finds no matches.
   rl_attempted_completion_over = 1;
 
@@ -298,15 +298,14 @@ Terminal::Terminal()
                                            rclcpp::Clock().now().seconds()))) {}
 
 void Terminal::run_console() {
-  this->graph_ = std::make_shared<knowledge_graph::KnowledgeGraph>(
-      this->shared_from_this());
+  this->graph_ = knowledge_graph::KnowledgeGraph::get_instance();
+  current_terminal_ = this;
   std::string line;
   bool success = true;
 
   std::cout << "Knowledge Graph console. Type \"quit\" to finish" << std::endl;
 
-  rl_attempted_completion_function = completer;
-  current_graph = this->graph_.get();
+  rl_attempted_completion_function = Terminal::completer;
   rl_catch_signals = 0;
   signal(SIGINT, SIG_IGN);
 

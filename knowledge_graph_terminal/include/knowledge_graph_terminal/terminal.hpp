@@ -34,8 +34,6 @@ namespace knowledge_graph_terminal {
 std::vector<std::string> tokenize(const std::string &text,
                                   const std::string delim = " ");
 void pop_front(std::vector<std::string> &tokens);
-char *completion_generator(const char *text, int state);
-char **completer(const char *text, int start, int end);
 
 class Terminal : public rclcpp::Node {
 public:
@@ -75,6 +73,10 @@ protected:
   void process_print(std::vector<std::string> &command, std::ostringstream &os);
 
 private:
+  static char *completion_generator(const char *text, int state);
+  static char **completer(const char *text, int start, int end);
+  static Terminal *current_terminal_;
+
   std::shared_ptr<knowledge_graph::KnowledgeGraph> graph_;
 };
 

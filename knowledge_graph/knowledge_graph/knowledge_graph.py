@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-@file knowledge_graph.py
-@brief Knowledge Graph implementation for ROS 2.
-"""
-
+import uuid
+from threading import RLock, Thread
 from typing import Optional, Union, List
-from threading import RLock
 
+import rclpy
+from rclpy.time import Time
 from rclpy.node import Node as ROSNode
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
-from rclpy.time import Time
+
+try:
+    from rclpy.executors import EventsExecutor as Executor
+except ImportError:
+    from rclpy.executors import MultiThreadedExecutor as Executor
 
 from knowledge_graph.graph import Graph, Node, Edge
 from knowledge_graph_msgs.msg import GraphUpdate
@@ -44,30 +46,74 @@ class KnowledgeGraph(Graph):
         reliability=QoSReliabilityPolicy.RELIABLE,
     )
 
-    def __init__(self, provided_node: ROSNode) -> None:
+    ## The single instance of YasminNode.
+    _instance: "KnowledgeGraph" = None
+    ## Lock to control access to the instance.
+    _lock: RLock = RLock()
+
+    @staticmethod
+    def get_instance() -> "KnowledgeGraph":
+        """
+        Provides access to the singleton instance of KnowledgeGraph.
+
+        This method ensures there is only one instance of KnowledgeGraph running.
+        Returns:
+            KnowledgeGraph: A reference to the KnowledgeGraph instance.
+
+        Raises:
+            RuntimeError: Raised if the creation of the instance fails.
+        """
+        with KnowledgeGraph._lock:
+            if not rclpy.ok():
+                rclpy.init()
+
+            if KnowledgeGraph._instance is None:
+                KnowledgeGraph._instance = KnowledgeGraph()
+
+            return KnowledgeGraph._instance
+
+    def __init__(self) -> None:
         """
         @brief Initializes the KnowledgeGraph.
 
         @param provided_node The ROS 2 node to use for communication.
         """
+        if KnowledgeGraph._instance is not None:
+            raise RuntimeError("This class is a Singleton")
+
         super().__init__()
-        self._node = provided_node
+        ## The ROS 2 node used for communication.
+        self._node = ROSNode(
+            f"knowledge_graph_{str(uuid.uuid4()).replace('-', '')[:16]}_node"
+        )
+        ## Executor for managing node operations.
+        self._executor = Executor()
+        self._executor.add_node(self._node)
+
+        ## Thread to execute the spinning of the node.
+        self._spin_thread: Thread = Thread(target=self._executor.spin)
+        self._spin_thread.start()
+
+        ## Unique identifier for this graph instance
         self._graph_id = self._node.get_name()
+        ## Timestamp of the last received update
         self._last_ts = self._node.get_clock().now()
+        ## Start time for synchronization requests
         self._start_time = self._node.get_clock().now()
 
-        # Mutex for thread-safe graph operations (reentrant to allow nested calls)
+        ## Mutex for thread-safe graph operations (reentrant to allow nested calls)
         self._graph_mutex = RLock()
 
-        # Create publisher and subscriber for graph updates
+        ## Publisher for graph updates
         self._update_pub = self._node.create_publisher(
             GraphUpdate, "graph_update", self._UPDATE_QOS
         )
+        ## Subscription for graph updates
         self._update_sub = self._node.create_subscription(
             GraphUpdate, "graph_update", self._update_callback, self._UPDATE_QOS
         )
 
-        # Start sync timer
+        ## Timer for requesting graph synchronization
         self._reqsync_timer = self._node.create_timer(0.1, self._reqsync_timer_callback)
         self._reqsync_timer_callback()
 

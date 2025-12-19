@@ -39,7 +39,7 @@ class KnowledgeGraphDbNode(ROSNode):
         self.declare_parameter("db_file", "knowledge_graph.db")
         db_file = self.get_parameter("db_file").get_parameter_value().string_value
 
-        self.graph = KnowledgeGraph(self)
+        self.graph = KnowledgeGraph.get_instance()
 
         self.sqlite_conn = self.create_connection(db_file)
         self.create_tables()

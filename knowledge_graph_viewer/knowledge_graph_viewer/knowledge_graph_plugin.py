@@ -121,9 +121,7 @@ class KnowledgeGraphPlugin(Plugin):
 
     def do_update(self):
         try:
-            rclpy.spin_once(self._knowledge_graph, timeout_sec=0.01)
             self._update_knowledge_graph()
-
             self._updateTimer = QtCore.QTimer()
             self._updateTimer.timeout.connect(self.do_update)
             self._updateTimer.start(10)

@@ -38,12 +38,11 @@ import rclpy.node
 from knowledge_graph import KnowledgeGraph
 
 
-class KnowledgeGraphImpl(rclpy.node.Node):
+class KnowledgeGraphImpl:
 
     def __init__(self):
-        super().__init__("rqt_knowledge_graph")
-
-        self.graph = KnowledgeGraph(self)
+        super().__init__()
+        self.graph = KnowledgeGraph.get_instance()
 
     def __repr__(self):
         ret = "Nodes: " + str(len(self.graph.get_nodes())) + "\n"
