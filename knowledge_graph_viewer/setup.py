@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 package_name = "knowledge_graph_viewer"
 setup(
     name=package_name,
-    version="4.0.1",
+    version="4.1.0",
     # package_dir={'': ''},
     packages=find_packages(exclude=["test"]),
     data_files=[
