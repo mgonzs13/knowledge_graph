@@ -116,8 +116,12 @@ class TestGraphNodes:
         """Test removing a node."""
         graph = Graph()
         node = graph.create_node("robot", "robot_type")
+        node2 = graph.create_node("robot2", "robot_type")
+        edge = graph.create_edge("connects", "robot", "robot2")
         assert graph.remove_node(node)
         assert not graph.has_node("robot")
+        assert graph.has_node("robot2")
+        assert not graph.has_edge(edge)
 
     def test_remove_nonexistent_node(self):
         """Test removing a nonexistent node returns False."""
@@ -314,6 +318,8 @@ class TestGraphEdges:
     def test_update_edge_new(self):
         """Test updating a nonexistent edge adds it."""
         graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
         edge = Edge("connects", "a", "b")
         graph.update_edge(edge)
         assert graph.get_num_edges() == 1
@@ -321,6 +327,9 @@ class TestGraphEdges:
     def test_update_edges(self):
         """Test updating multiple edges."""
         graph = Graph()
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
+        graph.create_node("c", "type")
         edges = [
             Edge("e1", "a", "b"),
             Edge("e2", "b", "c"),
@@ -393,9 +402,9 @@ class TestGraphSerialization:
     def test_update_graph(self):
         """Test updating graph with another graph."""
         graph1 = Graph()
-        graph1.create_node("a", "type")
 
         graph2 = Graph()
+        graph2.create_node("a", "type")
         graph2.create_node("b", "type")
         edge = Edge("connects", "a", "b")
         graph2.update_edge(edge)
@@ -403,7 +412,7 @@ class TestGraphSerialization:
         graph1.update_graph(graph2)
         assert graph1.has_node("a")
         assert graph1.has_node("b")
-        assert graph1.has_edge("connects", "a", "b")
+        assert graph1.has_edge(edge)
 
 
 class TestGraphCallbacks:
@@ -576,11 +585,13 @@ class TestGraphCallbacks:
 
         graph.add_callback(callback)
         new_edge = Edge("connects", "a", "b")
+        graph.create_node("a", "type")
+        graph.create_node("b", "type")
         graph.update_edge(new_edge)
 
-        assert len(callback_data) == 1
-        assert callback_data[0][0] == "add"
-        assert callback_data[0][1] == "edge"
+        assert len(callback_data) == 3
+        assert callback_data[2][0] == "add"
+        assert callback_data[2][1] == "edge"
 
     def test_callback_on_update_edges(self):
         """Test callback is invoked when multiple edges are updated."""

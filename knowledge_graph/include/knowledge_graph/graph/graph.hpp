@@ -88,33 +88,6 @@ public:
    */
   virtual Node create_node(const std::string &name, const std::string &type);
 
-  /***
-   * @brief Check if a node exists in the graph
-   * @param name The name of the node
-   * @return True if the node exists, false otherwise
-   */
-  bool has_node(const std::string &name) const;
-
-  /**
-   * @brief Get the number of nodes in the graph
-   * @return Number of nodes in the graph
-   */
-  int get_num_nodes() const;
-
-  /**
-   * @brief Get all nodes in the graph
-   * @return Vector of all nodes in the graph
-   */
-  std::vector<Node> get_nodes() const;
-
-  /**
-   * @brief Get a node by name
-   * @param name The name of the node
-   * @return The Node with the given name
-   * @throws std::runtime_error if the node does not exist
-   */
-  Node get_node(const std::string &name) const;
-
   /**
    * @brief Update a node in the graph
    * @param node The node to update
@@ -140,6 +113,40 @@ public:
    */
   virtual const std::vector<Node> remove_nodes(const std::vector<Node> &nodes);
 
+  /***
+   * @brief Check if a node exists in the graph
+   * @param name The name of the node
+   * @return True if the node exists, false otherwise
+   */
+  bool has_node(const std::string &name) const;
+
+  /**
+   * @brief Check if a node exists in the graph
+   * @param node The node to check
+   * @return True if the node exists, false otherwise
+   */
+  bool has_node(const Node &node) const;
+
+  /**
+   * @brief Get the number of nodes in the graph
+   * @return Number of nodes in the graph
+   */
+  int get_num_nodes() const;
+
+  /**
+   * @brief Get all nodes in the graph
+   * @return Vector of all nodes in the graph
+   */
+  std::vector<Node> get_nodes() const;
+
+  /**
+   * @brief Get a node by name
+   * @param name The name of the node
+   * @return The Node with the given name
+   * @throws std::runtime_error if the node does not exist
+   */
+  Node get_node(const std::string &name) const;
+
   /************************************************************
    * Edge Management Functions
    ************************************************************/
@@ -156,6 +163,32 @@ public:
                            const std::string &target_node);
 
   /**
+   * @brief Update an edge in the graph
+   * @param edge The edge to update
+   */
+  virtual void update_edge(const Edge &edge);
+
+  /**
+   * @brief Update edges in the graph
+   * @param edges The edges to update
+   */
+  virtual void update_edges(const std::vector<Edge> &edges);
+
+  /**
+   * @brief Remove an edge from the graph
+   * @param edge The edge to remove
+   * @return True if the edge was removed, false if it was not found
+   */
+  virtual bool remove_edge(const Edge &edge);
+
+  /**
+   * @brief Remove edges from the graph
+   * @param edges The edges to remove
+   */
+  virtual const std::vector<graph::Edge>
+  remove_edges(const std::vector<Edge> &edges);
+
+  /**
    * @brief Check if an edge exists in the graph
    * @param type The type of the edge
    * @param source_node The source node name
@@ -164,6 +197,13 @@ public:
    */
   bool has_edge(const std::string &type, const std::string &source_node,
                 const std::string &target_node) const;
+
+  /**
+   * @brief Check if an edge exists in the graph
+   * @param edge The edge to check
+   * @return True if the edge exists, false otherwise
+   */
+  bool has_edge(const Edge &edge) const;
 
   /**
    * @brief Get the number of edges in the graph
@@ -239,32 +279,6 @@ public:
    */
   Edge get_edge(const std::string &type, const std::string &source_node,
                 const std::string &target_node) const;
-
-  /**
-   * @brief Update an edge in the graph
-   * @param edge The edge to update
-   */
-  virtual void update_edge(const Edge &edge);
-
-  /**
-   * @brief Update edges in the graph
-   * @param edges The edges to update
-   */
-  virtual void update_edges(const std::vector<Edge> &edges);
-
-  /**
-   * @brief Remove an edge from the graph
-   * @param edge The edge to remove
-   * @return True if the edge was removed, false if it was not found
-   */
-  virtual bool remove_edge(const Edge &edge);
-
-  /**
-   * @brief Remove edges from the graph
-   * @param edges The edges to remove
-   */
-  virtual const std::vector<graph::Edge>
-  remove_edges(const std::vector<Edge> &edges);
 
 protected:
   /**

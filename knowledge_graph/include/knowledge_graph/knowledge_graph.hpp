@@ -102,6 +102,32 @@ public:
   graph::Node create_node(const std::string &name,
                           const std::string &type) override;
 
+  /**
+   * @brief Update a node in the graph
+   * @param node The node to update
+   */
+  void update_node(const graph::Node &node) override;
+
+  /**
+   * @brief Update nodes in the graph
+   * @param nodes The nodes to update
+   */
+  void update_nodes(const std::vector<graph::Node> &nodes) override;
+
+  /**
+   * @brief Remove a node from the graph
+   * @param node The node to remove
+   * @return True if the node was removed, false if it was not found
+   */
+  bool remove_node(const graph::Node &node) override;
+
+  /**
+   * @brief Remove nodes from the graph
+   * @param nodes The nodes to remove
+   */
+  const std::vector<graph::Node>
+  remove_nodes(const std::vector<graph::Node> &nodes) override;
+
   /***
    * @brief Check if a node exists in the graph
    * @param name The name of the node
@@ -129,32 +155,6 @@ public:
    */
   graph::Node get_node(const std::string &name) const;
 
-  /**
-   * @brief Update a node in the graph
-   * @param node The node to update
-   */
-  void update_node(const graph::Node &node) override;
-
-  /**
-   * @brief Update nodes in the graph
-   * @param nodes The nodes to update
-   */
-  void update_nodes(const std::vector<graph::Node> &nodes) override;
-
-  /**
-   * @brief Remove a node from the graph
-   * @param node The node to remove
-   * @return True if the node was removed, false if it was not found
-   */
-  bool remove_node(const graph::Node &node) override;
-
-  /**
-   * @brief Remove nodes from the graph
-   * @param nodes The nodes to remove
-   */
-  const std::vector<graph::Node>
-  remove_nodes(const std::vector<graph::Node> &nodes) override;
-
   /************************************************************
    * Edge Management Functions
    ************************************************************/
@@ -178,6 +178,32 @@ public:
    */
   bool has_edge(const std::string &type, const std::string &source_node,
                 const std::string &target_node) const;
+
+  /**
+   * @brief Update an edge in the graph
+   * @param edge The edge to update
+   */
+  void update_edge(const graph::Edge &edge) override;
+
+  /**
+   * @brief Update edges in the graph
+   * @param edges The edges to update
+   */
+  void update_edges(const std::vector<graph::Edge> &edges) override;
+
+  /**
+   * @brief Remove an edge from the graph
+   * @param edge The edge to remove
+   * @return True if the edge was removed, false if it was not found
+   */
+  bool remove_edge(const graph::Edge &edge) override;
+
+  /**
+   * @brief Remove edges from the graph
+   * @param edges The edges to remove
+   */
+  const std::vector<graph::Edge>
+  remove_edges(const std::vector<graph::Edge> &edges) override;
 
   /**
    * @brief Get the number of edges in the graph
@@ -255,32 +281,6 @@ public:
    */
   graph::Edge get_edge(const std::string &type, const std::string &source_node,
                        const std::string &target_node) const;
-
-  /**
-   * @brief Update an edge in the graph
-   * @param edge The edge to update
-   */
-  void update_edge(const graph::Edge &edge) override;
-
-  /**
-   * @brief Update edges in the graph
-   * @param edges The edges to update
-   */
-  void update_edges(const std::vector<graph::Edge> &edges) override;
-
-  /**
-   * @brief Remove an edge from the graph
-   * @param edge The edge to remove
-   * @return True if the edge was removed, false if it was not found
-   */
-  bool remove_edge(const graph::Edge &edge) override;
-
-  /**
-   * @brief Remove edges from the graph
-   * @param edges The edges to remove
-   */
-  const std::vector<graph::Edge>
-  remove_edges(const std::vector<graph::Edge> &edges) override;
 
 protected:
   /// @brief Pointer to the ROS 2 node that owns this graph.

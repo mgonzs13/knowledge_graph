@@ -248,22 +248,6 @@ class KnowledgeGraph(Graph):
             self._publish_update(GraphUpdate.UPDATE, node)
             return node
 
-    def has_node(self, name: str) -> bool:
-        with self._graph_mutex:
-            return super().has_node(name)
-
-    def get_num_nodes(self) -> int:
-        with self._graph_mutex:
-            return super().get_num_nodes()
-
-    def get_nodes(self) -> List[Node]:
-        with self._graph_mutex:
-            return super().get_nodes()
-
-    def get_node(self, name: str) -> Node:
-        with self._graph_mutex:
-            return super().get_node(name)
-
     def update_node(self, node: Node) -> None:
         with self._graph_mutex:
             Graph.update_node(self, node)
@@ -287,6 +271,22 @@ class KnowledgeGraph(Graph):
             self._publish_update(GraphUpdate.REMOVE, removed_nodes)
             return removed_nodes
 
+    def has_node(self, name: Union[str, Node]) -> bool:
+        with self._graph_mutex:
+            return super().has_node(name)
+
+    def get_num_nodes(self) -> int:
+        with self._graph_mutex:
+            return super().get_num_nodes()
+
+    def get_nodes(self) -> List[Node]:
+        with self._graph_mutex:
+            return super().get_nodes()
+
+    def get_node(self, name: str) -> Node:
+        with self._graph_mutex:
+            return super().get_node(name)
+
     # =========================================================================
     # Edge Management Functions
     # =========================================================================
@@ -296,9 +296,38 @@ class KnowledgeGraph(Graph):
             self._publish_update(GraphUpdate.UPDATE, edge)
             return edge
 
-    def has_edge(self, type: str, source_node: str, target_node: str) -> bool:
+    def update_edge(self, edge: Edge) -> None:
         with self._graph_mutex:
-            return super().has_edge(type, source_node, target_node)
+            Graph.update_edge(self, edge)
+            self._publish_update(GraphUpdate.UPDATE, edge)
+
+    def update_edges(self, edges: List[Edge]) -> None:
+        with self._graph_mutex:
+            Graph.update_edges(self, edges)
+            self._publish_update(GraphUpdate.UPDATE, edges)
+
+    def remove_edge(self, edge: Edge) -> bool:
+        with self._graph_mutex:
+            removed = Graph.remove_edge(self, edge)
+            if removed:
+                self._publish_update(GraphUpdate.REMOVE, edge)
+            return removed
+
+    def remove_edges(self, edges: List[Edge]) -> List[Edge]:
+        with self._graph_mutex:
+            removed_edges = Graph.remove_edges(self, edges)
+            if removed_edges:
+                self._publish_update(GraphUpdate.REMOVE, removed_edges)
+            return removed_edges
+
+    def has_edge(
+        self,
+        type_or_edge: Union[str, Edge],
+        source_node: str = None,
+        target_node: str = None,
+    ) -> bool:
+        with self._graph_mutex:
+            return super().has_edge(type_or_edge, source_node, target_node)
 
     def get_num_edges(self) -> int:
         with self._graph_mutex:
@@ -335,27 +364,3 @@ class KnowledgeGraph(Graph):
     def get_edge(self, type: str, source_node: str, target_node: str) -> Edge:
         with self._graph_mutex:
             return super().get_edge(type, source_node, target_node)
-
-    def update_edge(self, edge: Edge) -> None:
-        with self._graph_mutex:
-            Graph.update_edge(self, edge)
-            self._publish_update(GraphUpdate.UPDATE, edge)
-
-    def update_edges(self, edges: List[Edge]) -> None:
-        with self._graph_mutex:
-            Graph.update_edges(self, edges)
-            self._publish_update(GraphUpdate.UPDATE, edges)
-
-    def remove_edge(self, edge: Edge) -> bool:
-        with self._graph_mutex:
-            removed = Graph.remove_edge(self, edge)
-            if removed:
-                self._publish_update(GraphUpdate.REMOVE, edge)
-            return removed
-
-    def remove_edges(self, edges: List[Edge]) -> List[Edge]:
-        with self._graph_mutex:
-            removed_edges = Graph.remove_edges(self, edges)
-            if removed_edges:
-                self._publish_update(GraphUpdate.REMOVE, removed_edges)
-            return removed_edges

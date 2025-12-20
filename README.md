@@ -96,18 +96,6 @@ The complete C++ API of `knowledge_graph::KnowledgeGraph` (extends `knowledge_gr
 // Create a new node in the graph
 Node create_node(const std::string &name, const std::string &type);
 
-// Check if a node exists
-bool has_node(const std::string &name) const;
-
-// Get number of nodes
-int get_num_nodes() const;
-
-// Get all nodes
-std::vector<Node> get_nodes() const;
-
-// Get a node by name (throws if not found)
-Node get_node(const std::string &name) const;
-
 // Update a node (adds if not exists)
 void update_node(const Node &node);
 
@@ -119,6 +107,20 @@ bool remove_node(const Node &node);
 
 // Remove multiple nodes
 const std::vector<graph::Node> remove_nodes(const std::vector<Node> &nodes);
+
+// Check if a node exists
+bool has_node(const std::string &name) const;
+
+bool has_node(const Node &node) const;
+
+// Get number of nodes
+int get_num_nodes() const;
+
+// Get all nodes
+std::vector<Node> get_nodes() const;
+
+// Get a node by name (throws if not found)
+Node get_node(const std::string &name) const;
 ```
 
 #### Edge Operations
@@ -127,8 +129,22 @@ const std::vector<graph::Node> remove_nodes(const std::vector<Node> &nodes);
 // Create a new edge
 Edge create_edge(const std::string &type, const std::string &source_node, const std::string &target_node);
 
+// Update an edge (adds if not exists)
+void update_edge(const Edge &edge);
+
+// Update multiple edges
+void update_edges(const std::vector<Edge> &edges);
+
+// Remove an edge
+bool remove_edge(const Edge &edge);
+
+// Remove multiple edges
+const std::vector<graph::Edge> remove_edges(const std::vector<Edge> &edges);
+
 // Check if an edge exists
 bool has_edge(const std::string &type, const std::string &source_node, const std::string &target_node) const;
+
+bool has_edge(const Edge &edge) const;
 
 // Get number of edges
 int get_num_edges() const;
@@ -156,18 +172,6 @@ std::vector<Edge> get_edges_to_node_by_type(const std::string &type, const std::
 
 // Get a specific edge (throws if not found)
 Edge get_edge(const std::string &type, const std::string &source_node, const std::string &target_node) const;
-
-// Update an edge (adds if not exists)
-void update_edge(const Edge &edge);
-
-// Update multiple edges
-void update_edges(const std::vector<Edge> &edges);
-
-// Remove an edge
-bool remove_edge(const Edge &edge);
-
-// Remove multiple edges
-const std::vector<graph::Edge> remove_edges(const std::vector<Edge> &edges);
 ```
 
 #### Node/Edge Properties
@@ -189,6 +193,18 @@ bool has_property(const std::string &key) const;
 
 Supported property types: `bool`, `int`, `float`, `double`, `std::string`, and vectors of these types.
 
+#### Callbacks
+
+```cpp
+// Add a callback to be called when the graph is updated
+void add_callback(std::function<void(const std::string &, const std::string &, const std::vector<std::variant<Node, Edge>> &)> callback);
+
+// Clear all registered callbacks
+void clear_callbacks();
+```
+
+The callback function is called with parameters: operation ('add', 'update', 'remove'), element_type ('node' or 'edge'), and elements (list of Node or Edge objects).
+
 ### Python
 
 The complete Python API of `KnowledgeGraph` (extends `Graph`) is at [knowledge_graph/knowledge_graph/knowledge_graph.py](knowledge_graph/knowledge_graph/knowledge_graph.py). The main API functions are:
@@ -198,18 +214,6 @@ The complete Python API of `KnowledgeGraph` (extends `Graph`) is at [knowledge_g
 ```python
 # Create a new node in the graph
 def create_node(self, name: str, type_: str) -> Node
-
-# Check if a node exists
-def has_node(self, name: str) -> bool
-
-# Get number of nodes
-def get_num_nodes(self) -> int
-
-# Get all nodes
-def get_nodes(self) -> List[Node]
-
-# Get a node by name (raises RuntimeError if not found)
-def get_node(self, name: str) -> Node
 
 # Update a node (adds if not exists)
 def update_node(self, node: Node) -> None
@@ -222,6 +226,18 @@ def remove_node(self, node: Node) -> bool
 
 # Remove multiple nodes
 def remove_nodes(self, nodes: List[Node]) -> List[Node]
+
+# Check if a node exists
+def has_node(self, name: Union[str, Node]) -> bool:
+
+# Get number of nodes
+def get_num_nodes(self) -> int
+
+# Get all nodes
+def get_nodes(self) -> List[Node]
+
+# Get a node by name (raises RuntimeError if not found)
+def get_node(self, name: str) -> Node
 ```
 
 #### Edge Operations
@@ -230,8 +246,20 @@ def remove_nodes(self, nodes: List[Node]) -> List[Node]
 # Create a new edge
 def create_edge(self, type_: str, source_node: str, target_node: str) -> Edge
 
+# Update an edge (adds if not exists)
+def update_edge(self, edge: Edge) -> None
+
+# Update multiple edges
+def update_edges(self, edges: List[Edge]) -> None
+
+# Remove an edge
+def remove_edge(self, edge: Edge) -> bool
+
+# Remove multiple edges
+def remove_edges(self, edges: List[Edge]) -> List[Edge]
+
 # Check if an edge exists
-def has_edge(self, type: str, source_node: str, target_node: str) -> bool
+def has_edge(self, type_or_edge: Union[str, Edge], source_node: str = None, target_node: str = None) -> bool:
 
 # Get number of edges
 def get_num_edges(self) -> int
@@ -259,18 +287,6 @@ def get_edges_to_node_by_type(self, type: str, target_node: str) -> List[Edge]
 
 # Get a specific edge (raises RuntimeError if not found)
 def get_edge(self, type: str, source_node: str, target_node: str) -> Edge
-
-# Update an edge (adds if not exists)
-def update_edge(self, edge: Edge) -> None
-
-# Update multiple edges
-def update_edges(self, edges: List[Edge]) -> None
-
-# Remove an edge
-def remove_edge(self, edge: Edge) -> bool
-
-# Remove multiple edges
-def remove_edges(self, edges: List[Edge]) -> List[Edge]
 ```
 
 #### Node/Edge Properties
@@ -289,6 +305,18 @@ def has_property(self, key: str) -> bool
 ```
 
 Supported property types: `bool`, `int`, `float`, `str`, and lists of these types.
+
+#### Callbacks
+
+```python
+# Add a callback to be called when the graph is updated
+def add_callback(self, callback: Callable[[str, str, List[Union[Node, Edge]]], None]) -> None
+
+# Clear all registered callbacks
+def clear_callbacks(self) -> None
+```
+
+The callback function is called with parameters: operation ('add', 'update', 'remove'), element_type ('node' or 'edge'), and elements (list of Node or Edge objects).
 
 ## Demos
 

@@ -111,8 +111,12 @@ TEST_F(GraphNodeTest, UpdateNodes) {
 // Node Removal Tests
 TEST_F(GraphNodeTest, RemoveNode) {
   auto node = graph.create_node("robot", "robot_type");
+  auto node2 = graph.create_node("robot2", "robot_type");
+  auto edge = graph.create_edge("connects", "robot", "robot2");
   EXPECT_TRUE(graph.remove_node(node));
   EXPECT_FALSE(graph.has_node("robot"));
+  EXPECT_TRUE(graph.has_node("robot2"));
+  EXPECT_FALSE(graph.has_edge(edge));
 }
 
 TEST_F(GraphNodeTest, RemoveNonexistentNode) {
@@ -338,9 +342,9 @@ TEST_F(GraphSerializationTest, ConstructorFromMessage) {
 }
 
 TEST_F(GraphSerializationTest, UpdateGraph) {
-  graph.create_node("a", "type");
 
   Graph graph2;
+  graph2.create_node("a", "type");
   graph2.update_node(Node("b", "type"));
   Edge edge("connects", "a", "b");
   graph2.update_edge(edge);
@@ -473,11 +477,13 @@ TEST_F(GraphCallbackTest, CallbackOnEdgeUpdateExisting) {
 
 TEST_F(GraphCallbackTest, CallbackOnEdgeUpdateNew) {
   Edge new_edge("connects", "a", "b");
+  graph.create_node("a", "type");
+  graph.create_node("b", "type");
   graph.update_edge(new_edge);
 
-  EXPECT_EQ(callback_data.size(), 1u);
-  EXPECT_EQ(std::get<0>(callback_data[0]), "add");
-  EXPECT_EQ(std::get<1>(callback_data[0]), "edge");
+  EXPECT_EQ(callback_data.size(), 3u);
+  EXPECT_EQ(std::get<0>(callback_data[2]), "add");
+  EXPECT_EQ(std::get<1>(callback_data[2]), "edge");
 }
 
 TEST_F(GraphCallbackTest, CallbackOnUpdateEdges) {

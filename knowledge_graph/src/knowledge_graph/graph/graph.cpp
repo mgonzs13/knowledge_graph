@@ -101,17 +101,8 @@ bool Graph::has_node(const std::string &name) const {
   return false;
 }
 
-int Graph::get_num_nodes() const { return this->nodes_.size(); }
-
-std::vector<Node> Graph::get_nodes() const { return this->nodes_; }
-
-Node Graph::get_node(const std::string &name) const {
-  for (const auto &node : this->nodes_) {
-    if (node.get_name() == name) {
-      return node;
-    }
-  }
-  throw std::runtime_error("Node not found: " + name);
+bool Graph::has_node(const Node &node) const {
+  return this->has_node(node.get_name());
 }
 
 bool Graph::update_node_internal(const Node &node) {
@@ -169,6 +160,14 @@ bool Graph::remove_node_internal(const Node &node) {
 
 bool Graph::remove_node(const Node &node) {
   bool removed = this->remove_node_internal(node);
+
+  for (const auto &edge : this->get_edges()) {
+    if (edge.get_source_node() == node.get_name() ||
+        edge.get_target_node() == node.get_name()) {
+      this->remove_edge(edge);
+    }
+  }
+
   if (removed) {
     this->notify_callbacks("remove", "node", {node});
   }
@@ -188,6 +187,19 @@ const std::vector<Node> Graph::remove_nodes(const std::vector<Node> &nodes) {
         std::vector<std::variant<Node, Edge>>(removed.begin(), removed.end()));
   }
   return removed;
+}
+
+int Graph::get_num_nodes() const { return this->nodes_.size(); }
+
+std::vector<Node> Graph::get_nodes() const { return this->nodes_; }
+
+Node Graph::get_node(const std::string &name) const {
+  for (const auto &node : this->nodes_) {
+    if (node.get_name() == name) {
+      return node;
+    }
+  }
+  throw std::runtime_error("Node not found: " + name);
 }
 
 /************************************************************
@@ -214,75 +226,6 @@ Edge Graph::create_edge(const std::string &type, const std::string &source_node,
   return edge;
 }
 
-bool Graph::has_edge(const std::string &type, const std::string &source_node,
-                     const std::string &target_node) const {
-  for (const auto &edge : this->edges_) {
-    if (edge.get_type() == type && edge.get_source_node() == source_node &&
-        edge.get_target_node() == target_node) {
-      return true;
-    }
-  }
-  return false;
-}
-
-int Graph::get_num_edges() const { return this->edges_.size(); }
-
-std::vector<Edge> Graph::get_edges() const { return this->edges_; }
-
-std::vector<Edge>
-Graph::get_edges_from_node(const std::string &source_node) const {
-  return this->filter_edges(
-      [&](const Edge &e) { return e.get_source_node() == source_node; });
-}
-
-std::vector<Edge>
-Graph::get_edges_to_node(const std::string &target_node) const {
-  return this->filter_edges(
-      [&](const Edge &e) { return e.get_target_node() == target_node; });
-}
-
-std::vector<Edge>
-Graph::get_edges_between_nodes(const std::string &source_node,
-                               const std::string &target_node) const {
-  return this->filter_edges([&](const Edge &e) {
-    return e.get_source_node() == source_node &&
-           e.get_target_node() == target_node;
-  });
-}
-
-std::vector<Edge> Graph::get_edges_by_type(const std::string &type) const {
-  return this->filter_edges(
-      [&](const Edge &e) { return e.get_type() == type; });
-}
-
-std::vector<Edge>
-Graph::get_edges_from_node_by_type(const std::string &type,
-                                   const std::string &source_node) const {
-  return this->filter_edges([&](const Edge &e) {
-    return e.get_source_node() == source_node && e.get_type() == type;
-  });
-}
-
-std::vector<Edge>
-Graph::get_edges_to_node_by_type(const std::string &type,
-                                 const std::string &target_node) const {
-  return this->filter_edges([&](const Edge &e) {
-    return e.get_target_node() == target_node && e.get_type() == type;
-  });
-}
-
-Edge Graph::get_edge(const std::string &type, const std::string &source_node,
-                     const std::string &target_node) const {
-  for (const auto &edge : this->edges_) {
-    if (edge.get_type() == type && edge.get_source_node() == source_node &&
-        edge.get_target_node() == target_node) {
-      return edge;
-    }
-  }
-  throw std::runtime_error("Edge not found: " + type + " from " + source_node +
-                           " to " + target_node);
-}
-
 bool Graph::update_edge_internal(const Edge &edge) {
   bool existing = false;
   for (auto &existing_edge : this->edges_) {
@@ -294,7 +237,17 @@ bool Graph::update_edge_internal(const Edge &edge) {
       break;
     }
   }
+
   if (!existing) {
+    if (!this->has_node(edge.get_source_node())) {
+      throw std::runtime_error("Source node does not exist: " +
+                               edge.get_source_node());
+    }
+
+    if (!this->has_node(edge.get_target_node())) {
+      throw std::runtime_error("Target node does not exist: " +
+                               edge.get_target_node());
+    }
     this->edges_.push_back(edge);
   }
   return existing;
@@ -381,4 +334,78 @@ template <typename Predicate> bool Graph::remove_edges_if(Predicate pred) {
     return true;
   }
   return false;
+}
+
+bool Graph::has_edge(const std::string &type, const std::string &source_node,
+                     const std::string &target_node) const {
+  for (const auto &edge : this->edges_) {
+    if (edge.get_type() == type && edge.get_source_node() == source_node &&
+        edge.get_target_node() == target_node) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Graph::has_edge(const Edge &edge) const {
+  return this->has_edge(edge.get_type(), edge.get_source_node(),
+                        edge.get_target_node());
+}
+
+int Graph::get_num_edges() const { return this->edges_.size(); }
+
+std::vector<Edge> Graph::get_edges() const { return this->edges_; }
+
+std::vector<Edge>
+Graph::get_edges_from_node(const std::string &source_node) const {
+  return this->filter_edges(
+      [&](const Edge &e) { return e.get_source_node() == source_node; });
+}
+
+std::vector<Edge>
+Graph::get_edges_to_node(const std::string &target_node) const {
+  return this->filter_edges(
+      [&](const Edge &e) { return e.get_target_node() == target_node; });
+}
+
+std::vector<Edge>
+Graph::get_edges_between_nodes(const std::string &source_node,
+                               const std::string &target_node) const {
+  return this->filter_edges([&](const Edge &e) {
+    return e.get_source_node() == source_node &&
+           e.get_target_node() == target_node;
+  });
+}
+
+std::vector<Edge> Graph::get_edges_by_type(const std::string &type) const {
+  return this->filter_edges(
+      [&](const Edge &e) { return e.get_type() == type; });
+}
+
+std::vector<Edge>
+Graph::get_edges_from_node_by_type(const std::string &type,
+                                   const std::string &source_node) const {
+  return this->filter_edges([&](const Edge &e) {
+    return e.get_source_node() == source_node && e.get_type() == type;
+  });
+}
+
+std::vector<Edge>
+Graph::get_edges_to_node_by_type(const std::string &type,
+                                 const std::string &target_node) const {
+  return this->filter_edges([&](const Edge &e) {
+    return e.get_target_node() == target_node && e.get_type() == type;
+  });
+}
+
+Edge Graph::get_edge(const std::string &type, const std::string &source_node,
+                     const std::string &target_node) const {
+  for (const auto &edge : this->edges_) {
+    if (edge.get_type() == type && edge.get_source_node() == source_node &&
+        edge.get_target_node() == target_node) {
+      return edge;
+    }
+  }
+  throw std::runtime_error("Edge not found: " + type + " from " + source_node +
+                           " to " + target_node);
 }

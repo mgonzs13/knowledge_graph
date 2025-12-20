@@ -105,42 +105,6 @@ class Graph:
         self._notify_callbacks("add", "node", [node])
         return node
 
-    def has_node(self, name: str) -> bool:
-        """
-        Check if a node exists in the graph.
-        :param name: The name of the node.
-        :return: True if the node exists, false otherwise.
-        """
-        for node in self._nodes:
-            if node.get_name() == name:
-                return True
-        return False
-
-    def get_num_nodes(self) -> int:
-        """
-        Get the number of nodes in the graph.
-        :return: Number of nodes in the graph.
-        """
-        return len(self._nodes)
-
-    def get_nodes(self) -> List[Node]:
-        """
-        Get all nodes in the graph.
-        :return: List of all nodes in the graph.
-        """
-        return self._nodes[:]
-
-    def get_node(self, name: str) -> Node:
-        """
-        Get a node by name.
-        :param name: The name of the node.
-        :return: The Node with the given name.
-        """
-        for node in self._nodes:
-            if node.get_name() == name:
-                return node
-        raise RuntimeError(f"Node not found: {name}")
-
     def _update_node_internal(self, node: Node) -> bool:
         """
         Internal update node without notification.
@@ -203,6 +167,15 @@ class Graph:
         """
         removed = self._remove_node_internal(node)
         if removed:
+            # Remove all edges connected to this node
+            edges_to_remove = [
+                e
+                for e in self._edges
+                if e.get_source_node() == node.get_name()
+                or e.get_target_node() == node.get_name()
+            ]
+            for edge in edges_to_remove:
+                self.remove_edge(edge)
             self._notify_callbacks("remove", "node", [node])
         return removed
 
@@ -218,6 +191,45 @@ class Graph:
         if removed:
             self._notify_callbacks("remove", "node", removed)
         return removed
+
+    def has_node(self, name: Union[str, Node]) -> bool:
+        """
+        Check if a node exists in the graph.
+        :param name: The name of the node.
+        :return: True if the node exists, false otherwise.
+        """
+        if isinstance(name, Node):
+            name = name.get_name()
+
+        for node in self._nodes:
+            if node.get_name() == name:
+                return True
+        return False
+
+    def get_num_nodes(self) -> int:
+        """
+        Get the number of nodes in the graph.
+        :return: Number of nodes in the graph.
+        """
+        return len(self._nodes)
+
+    def get_nodes(self) -> List[Node]:
+        """
+        Get all nodes in the graph.
+        :return: List of all nodes in the graph.
+        """
+        return self._nodes[:]
+
+    def get_node(self, name: str) -> Node:
+        """
+        Get a node by name.
+        :param name: The name of the node.
+        :return: The Node with the given name.
+        """
+        for node in self._nodes:
+            if node.get_name() == name:
+                return node
+        raise RuntimeError(f"Node not found: {name}")
 
     # =========================================================================
     # Edge methods
@@ -243,22 +255,133 @@ class Graph:
         self._notify_callbacks("add", "edge", [edge])
         return edge
 
-    def has_edge(self, type: str, source_node: str, target_node: str) -> bool:
+    def _update_edge_internal(self, edge: Edge) -> bool:
         """
-        Check if an edge exists in the graph.
-        :param type: The type of the edge.
-        :param source_node: The source node name.
-        :param target_node: The target node name.
-        :return: True if the edge exists, false otherwise.
+        Internal update edge without notification.
+        :param edge: The edge to update.
+        :return: True if the edge was updated (existed), False if it was added (new).
         """
-        for edge in self._edges:
+        existing = False
+        for i, existing_edge in enumerate(self._edges):
             if (
-                edge.get_type() == type
-                and edge.get_source_node() == source_node
-                and edge.get_target_node() == target_node
+                existing_edge.get_type() == edge.get_type()
+                and existing_edge.get_source_node() == edge.get_source_node()
+                and existing_edge.get_target_node() == edge.get_target_node()
             ):
+                self._edges[i] = edge
+                existing = True
+                break
+        if not existing:
+            if not self.has_node(edge.get_source_node()):
+                raise RuntimeError(
+                    f"Source node does not exist: {edge.get_source_node()}"
+                )
+            if not self.has_node(edge.get_target_node()):
+                raise RuntimeError(
+                    f"Target node does not exist: {edge.get_target_node()}"
+                )
+            self._edges.append(edge)
+        return existing
+
+    def update_edge(self, edge: Edge) -> None:
+        """
+        Update an edge in the graph.
+        :param edge: The edge to update.
+        """
+        existing = self._update_edge_internal(edge)
+        self._notify_callbacks("update" if existing else "add", "edge", [edge])
+
+    def update_edges(self, edges: List[Edge]) -> None:
+        """
+        Update edges in the graph.
+        :param edges: The edges to update.
+        """
+        added = []
+        updated = []
+        for edge in edges:
+            existing = self._update_edge_internal(edge)
+            if existing:
+                updated.append(edge)
+            else:
+                added.append(edge)
+        if added:
+            self._notify_callbacks("add", "edge", added)
+        if updated:
+            self._notify_callbacks("update", "edge", updated)
+
+    def _remove_edge_internal(self, edge: Edge) -> bool:
+        """
+        Internal remove edge without notification.
+        :param edge: The edge to remove.
+        :return: True if the edge was removed, false if it was not found.
+        """
+        for i, e in enumerate(self._edges):
+            if (
+                e.get_type() == edge.get_type()
+                and e.get_source_node() == edge.get_source_node()
+                and e.get_target_node() == edge.get_target_node()
+            ):
+                del self._edges[i]
                 return True
         return False
+
+    def remove_edge(self, edge: Edge) -> bool:
+        """
+        Remove an edge from the graph.
+        :param edge: The edge to remove.
+        :return: True if the edge was removed, false if it was not found.
+        """
+        removed = self._remove_edge_internal(edge)
+        if removed:
+            self._notify_callbacks("remove", "edge", [edge])
+        return removed
+
+    def remove_edges(self, edges: List[Edge]) -> List[Edge]:
+        """
+        Remove edges from the graph.
+        :param edges: The edges to remove.
+        """
+        removed = []
+        for edge in edges:
+            if self._remove_edge_internal(edge):
+                removed.append(edge)
+        if removed:
+            self._notify_callbacks("remove", "edge", removed)
+        return removed
+
+    def has_edge(
+        self,
+        type_or_edge: Union[str, Edge],
+        source_node: str = None,
+        target_node: str = None,
+    ) -> bool:
+        """
+        Check if an edge exists in the graph.
+        :param type_or_edge: The type of the edge or an Edge object.
+        :param source_node: The source node name (ignored if Edge is passed).
+        :param target_node: The target node name (ignored if Edge is passed).
+        :return: True if the edge exists, false otherwise.
+        """
+        if isinstance(type_or_edge, Edge):
+            if source_node is not None or target_node is not None:
+                raise ValueError(
+                    "When passing an Edge, do not pass source_node or target_node"
+                )
+            return self.has_edge(
+                type_or_edge.get_type(),
+                type_or_edge.get_source_node(),
+                type_or_edge.get_target_node(),
+            )
+        else:
+            type_ = type_or_edge
+            for edge in self._edges:
+                if (
+                    edge.get_type() == type_
+                    and edge.get_source_node() == source_node
+                    and edge.get_target_node() == target_node
+                ):
+                    return True
+            return False
 
     def get_num_edges(self) -> int:
         """
@@ -353,89 +476,3 @@ class Graph:
             ):
                 return edge
         raise RuntimeError(f"Edge not found: {type} from {source_node} to {target_node}")
-
-    def _update_edge_internal(self, edge: Edge) -> bool:
-        """
-        Internal update edge without notification.
-        :param edge: The edge to update.
-        :return: True if the edge was updated (existed), False if it was added (new).
-        """
-        existing = False
-        for i, existing_edge in enumerate(self._edges):
-            if (
-                existing_edge.get_type() == edge.get_type()
-                and existing_edge.get_source_node() == edge.get_source_node()
-                and existing_edge.get_target_node() == edge.get_target_node()
-            ):
-                self._edges[i] = edge
-                existing = True
-                break
-        if not existing:
-            self._edges.append(edge)
-        return existing
-
-    def update_edge(self, edge: Edge) -> None:
-        """
-        Update an edge in the graph.
-        :param edge: The edge to update.
-        """
-        existing = self._update_edge_internal(edge)
-        self._notify_callbacks("update" if existing else "add", "edge", [edge])
-
-    def update_edges(self, edges: List[Edge]) -> None:
-        """
-        Update edges in the graph.
-        :param edges: The edges to update.
-        """
-        added = []
-        updated = []
-        for edge in edges:
-            existing = self._update_edge_internal(edge)
-            if existing:
-                updated.append(edge)
-            else:
-                added.append(edge)
-        if added:
-            self._notify_callbacks("add", "edge", added)
-        if updated:
-            self._notify_callbacks("update", "edge", updated)
-
-    def _remove_edge_internal(self, edge: Edge) -> bool:
-        """
-        Internal remove edge without notification.
-        :param edge: The edge to remove.
-        :return: True if the edge was removed, false if it was not found.
-        """
-        for i, e in enumerate(self._edges):
-            if (
-                e.get_type() == edge.get_type()
-                and e.get_source_node() == edge.get_source_node()
-                and e.get_target_node() == edge.get_target_node()
-            ):
-                del self._edges[i]
-                return True
-        return False
-
-    def remove_edge(self, edge: Edge) -> bool:
-        """
-        Remove an edge from the graph.
-        :param edge: The edge to remove.
-        :return: True if the edge was removed, false if it was not found.
-        """
-        removed = self._remove_edge_internal(edge)
-        if removed:
-            self._notify_callbacks("remove", "edge", [edge])
-        return removed
-
-    def remove_edges(self, edges: List[Edge]) -> List[Edge]:
-        """
-        Remove edges from the graph.
-        :param edges: The edges to remove.
-        """
-        removed = []
-        for edge in edges:
-            if self._remove_edge_internal(edge):
-                removed.append(edge)
-        if removed:
-            self._notify_callbacks("remove", "edge", removed)
-        return removed
