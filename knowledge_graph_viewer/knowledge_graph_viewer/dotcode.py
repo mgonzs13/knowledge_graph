@@ -30,6 +30,8 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from qt_dotgraph.pydotfactory import PydotFactory
+
 
 class KnowledgeGraphDotcodeGenerator:
 
@@ -40,7 +42,7 @@ class KnowledgeGraphDotcodeGenerator:
     def generate_dotgraph(
         self,
         knowledge_graphinst,
-        dotcode_factory,
+        dotcode_factory: PydotFactory,
         orientation="LR",
         rank="same",  # None, same, min, max, source, sink
         ranksep=0.2,  # vertical distance between layers
@@ -61,28 +63,48 @@ class KnowledgeGraphDotcodeGenerator:
             rank=rank, ranksep=ranksep, simplify=simplify, rankdir=orientation
         )
 
-        for node in knowledge_graphinst.graph.get_nodes():
-            dotcode_factory.add_node_to_graph(
-                dotgraph,
-                nodename=node.get_name(),
-                nodelabel=node.get_name(),
-                shape="ellipse",
-                url=node.get_name(),
-            )
+        # Get all nodes and edges from the graph
+        nodes = knowledge_graphinst.graph.get_nodes()
+        edges = knowledge_graphinst.graph.get_edges()
 
-        for edge in knowledge_graphinst.graph.get_edges():
+        # If there are no nodes, return empty graph
+        if not nodes:
+            return dotgraph
+
+        # First, collect all valid node names and add them to the graph
+        node_names = set()
+        for node in nodes:
+            node_name = node.get_name()
+            if node_name:
+                node_names.add(node_name)
+                dotcode_factory.add_node_to_graph(
+                    dotgraph,
+                    nodename=node_name,
+                    nodelabel=node_name,
+                    shape="ellipse",
+                    url=node_name,
+                )
+
+        # Only add edges where both source and target nodes exist
+        for edge in edges:
+            source = edge.get_source_node()
+            target = edge.get_target_node()
             label = edge.get_type()
 
-            dotcode_factory.add_edge_to_graph(
-                dotgraph,
-                edge.get_source_node(),
-                edge.get_target_node(),
-                label=label,
-                url="%s %s %s ".format(
-                    edge.get_source_node(), edge.get_target_node(), label
-                ),
-                penwidth=1,
-            )
+            # Skip edges with invalid endpoints
+            if not source or not target:
+                continue
+
+            # Only add edge if both nodes were added to the graph
+            if source in node_names and target in node_names:
+                dotcode_factory.add_edge_to_graph(
+                    dotgraph,
+                    source,
+                    target,
+                    label=label,
+                    url=f"{source}, {target}, {label}",
+                    penwidth=1,
+                )
 
         return dotgraph
 

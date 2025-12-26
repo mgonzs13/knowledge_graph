@@ -45,10 +45,10 @@ class KnowledgeGraphImpl:
         self.graph = KnowledgeGraph.get_instance()
 
     def __repr__(self):
-        ret = "Nodes: " + str(len(self.graph.get_nodes())) + "\n"
+        ret = f"Nodes: {self.graph.get_num_nodes()}\n"
         for i in self.graph.get_nodes():
-            ret = ret + str(i) + "\n"
-        ret = ret + "Edges: " + str(len(self.graph.get_edges())) + "\n"
+            ret += f"{i}\n"
+        ret += f"Edges: {self.graph.get_num_edges()}\n"
         for i in self.graph.get_edges():
-            ret = ret + str(i) + "\n"
+            ret += f"{i}\n"
         return ret

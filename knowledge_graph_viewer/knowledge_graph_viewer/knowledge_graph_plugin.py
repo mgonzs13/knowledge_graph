@@ -53,7 +53,6 @@ from rqt_gui_py.plugin import Plugin
 # TODO: use pygraphviz instead, but non-deterministic layout will first be resolved in graphviz 2.30
 # from qtgui_plugin.pygraphvizfactory import PygraphvizFactory
 
-import rclpy
 from knowledge_graph_viewer.dotcode import KnowledgeGraphDotcodeGenerator
 from knowledge_graph_viewer.interactive_graphics_view import InteractiveGraphicsView
 from knowledge_graph_viewer.knowledge_graph_impl import KnowledgeGraphImpl
@@ -111,7 +110,9 @@ class KnowledgeGraphPlugin(Plugin):
 
         self._update_knowledge_graph()
         self._deferred_fit_in_view.connect(self._fit_in_view, Qt.QueuedConnection)
-        self._deferred_fit_in_view.emit()
+        # Only fit view if there's content
+        if self._scene.items():
+            self._deferred_fit_in_view.emit()
 
         context.add_widget(self._widget)
 
@@ -149,13 +150,30 @@ class KnowledgeGraphPlugin(Plugin):
     def _redraw_graph_view(self):
         self._scene.clear()
 
+        # Don't render if no dotcode
+        if not self._current_dotcode or not self._current_dotcode.strip():
+            return
+
+        # Check if the dotcode has actual nodes (not just graph definition)
+        if "shape=" not in self._current_dotcode:
+            # Empty graph - no nodes defined
+            return
+
         # layout graph and create qt items
         (nodes, edges) = self.dot_to_qt.dotcode_to_qt_items(
             self._current_dotcode,
             highlight_level=3,
-            same_label_siblings=True,
+            same_label_siblings=False,
             scene=self._scene,
         )
+
+        # Remove phantom nodes created from default node label "\N"
+        for node_name in list(nodes.keys()):
+            if node_name in ["\\n", "\\N", '"\\n"', '"\\N"']:
+                node_item = nodes[node_name]
+                if node_item in self._scene.items():
+                    self._scene.removeItem(node_item)
+                del nodes[node_name]
 
         self._scene.setSceneRect(self._scene.itemsBoundingRect())
         self._fit_in_view()
