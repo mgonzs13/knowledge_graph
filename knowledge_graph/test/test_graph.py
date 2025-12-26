@@ -39,8 +39,8 @@ class TestGraphNodes:
         """Test creating a duplicate node raises error."""
         graph = Graph()
         graph.create_node("robot", "robot_type")
-        with pytest.raises(RuntimeError):
-            graph.create_node("robot", "different_type")
+        graph.create_node("robot", "different_type")
+        assert graph.get_num_nodes() == 1
 
     def test_has_node(self):
         """Test checking if a node exists."""
@@ -176,8 +176,8 @@ class TestGraphEdges:
         graph.create_node("node_a", "type")
         graph.create_node("node_b", "type")
         graph.create_edge("connects", "node_a", "node_b")
-        with pytest.raises(RuntimeError):
-            graph.create_edge("connects", "node_a", "node_b")
+        graph.create_edge("connects", "node_a", "node_b")
+        assert graph.get_num_edges() == 1
 
     def test_has_edge(self):
         """Test checking if an edge exists."""

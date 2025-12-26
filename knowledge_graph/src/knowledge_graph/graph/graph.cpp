@@ -82,8 +82,16 @@ void Graph::notify_callbacks(
  * Node Management Functions
  ************************************************************/
 Node Graph::create_node(const std::string &name, const std::string &type) {
+  if (name.empty()) {
+    throw std::runtime_error("Node name cannot be empty");
+  }
+
+  if (type.empty()) {
+    throw std::runtime_error("Node type cannot be empty");
+  }
+
   if (this->has_node(name)) {
-    this->get_node(name);
+    return this->get_node(name);
   }
 
   Node node(name, type);
@@ -106,6 +114,14 @@ bool Graph::has_node(const Node &node) const {
 }
 
 bool Graph::update_node_internal(const Node &node) {
+  if (node.get_name().empty()) {
+    throw std::runtime_error("Node name cannot be empty");
+  }
+
+  if (node.get_type().empty()) {
+    throw std::runtime_error("Node type cannot be empty");
+  }
+
   bool existing = false;
   for (auto &existing_node : this->nodes_) {
     if (existing_node.get_name() == node.get_name()) {
@@ -208,6 +224,18 @@ Node Graph::get_node(const std::string &name) const {
 Edge Graph::create_edge(const std::string &type, const std::string &source_node,
                         const std::string &target_node) {
 
+  if (type.empty()) {
+    throw std::runtime_error("Edge type cannot be empty");
+  }
+
+  if (source_node.empty()) {
+    throw std::runtime_error("Source node cannot be empty");
+  }
+
+  if (target_node.empty()) {
+    throw std::runtime_error("Target node cannot be empty");
+  }
+
   if (!this->has_node(source_node)) {
     throw std::runtime_error("Source node does not exist: " + source_node);
   }
@@ -217,7 +245,7 @@ Edge Graph::create_edge(const std::string &type, const std::string &source_node,
   }
 
   if (this->has_edge(type, source_node, target_node)) {
-    this->get_edge(type, source_node, target_node);
+    return this->get_edge(type, source_node, target_node);
   }
 
   Edge edge(type, source_node, target_node);
@@ -227,6 +255,18 @@ Edge Graph::create_edge(const std::string &type, const std::string &source_node,
 }
 
 bool Graph::update_edge_internal(const Edge &edge) {
+  if (edge.get_type().empty()) {
+    throw std::runtime_error("Edge cannot be None");
+  }
+
+  if (edge.get_source_node().empty()) {
+    throw std::runtime_error("Edge source node cannot be empty");
+  }
+
+  if (edge.get_target_node().empty()) {
+    throw std::runtime_error("Edge target node cannot be empty");
+  }
+
   bool existing = false;
   for (auto &existing_edge : this->edges_) {
     if (existing_edge.get_type() == edge.get_type() &&

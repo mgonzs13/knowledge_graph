@@ -98,8 +98,14 @@ class Graph:
         :param type_: The type of the node.
         :return: The created Node.
         """
+        if not name:
+            raise ValueError("Node name cannot be empty")
+        if not type:
+            raise ValueError("Node type cannot be empty")
+
         if self.has_node(name):
-            raise RuntimeError(f"Node already exists: {name}")
+            return self.get_node(name)
+
         node = Node(name, type)
         self._nodes.append(node)
         self._notify_callbacks("add", "node", [node])
@@ -111,6 +117,12 @@ class Graph:
         :param node: The node to update.
         :return: True if the node was updated (existed), False if it was added (new).
         """
+        if not node.get_name():
+            raise ValueError("Node name cannot be empty")
+
+        if not node.get_type():
+            raise ValueError("Node type cannot be empty")
+
         existing = False
         for i, existing_node in enumerate(self._nodes):
             if existing_node.get_name() == node.get_name():
@@ -242,14 +254,20 @@ class Graph:
         :param target_node: The target node name.
         :return: The created Edge.
         """
+        if not type:
+            raise ValueError("Edge type cannot be empty")
+        if not source_node:
+            raise ValueError("Source node cannot be empty")
+        if not target_node:
+            raise ValueError("Target node cannot be empty")
+
         if not self.has_node(source_node):
             raise RuntimeError(f"Source node does not exist: {source_node}")
         if not self.has_node(target_node):
             raise RuntimeError(f"Target node does not exist: {target_node}")
         if self.has_edge(type, source_node, target_node):
-            raise RuntimeError(
-                f"Edge already exists: {type} from {source_node} to {target_node}"
-            )
+            return self.get_edge(type, source_node, target_node)
+
         edge = Edge(type, source_node, target_node)
         self._edges.append(edge)
         self._notify_callbacks("add", "edge", [edge])
@@ -261,6 +279,13 @@ class Graph:
         :param edge: The edge to update.
         :return: True if the edge was updated (existed), False if it was added (new).
         """
+        if not edge.get_type():
+            raise ValueError("Edge cannot be None")
+        if not edge.get_source_node():
+            raise ValueError("Edge source node cannot be empty")
+        if not edge.get_target_node():
+            raise ValueError("Edge target node cannot be empty")
+
         existing = False
         for i, existing_edge in enumerate(self._edges):
             if (

@@ -41,11 +41,9 @@ TEST_F(GraphNodeTest, CreateNode) {
 }
 
 TEST_F(GraphNodeTest, CreateDuplicateNodeDoesNotThrow) {
-  // In C++, creating a duplicate node does not throw - it returns existing
   graph.create_node("robot", "robot_type");
   auto node2 = graph.create_node("robot", "different_type");
-  // A duplicate is created, so we have 2 nodes
-  EXPECT_EQ(graph.get_num_nodes(), 2);
+  EXPECT_EQ(graph.get_num_nodes(), 1);
 }
 
 // Node Query Tests
@@ -170,11 +168,9 @@ TEST_F(GraphEdgeTest, CreateEdgeWithoutTargetNodeThrows) {
 }
 
 TEST_F(GraphEdgeTest, CreateDuplicateEdgeDoesNotThrow) {
-  // In C++, creating a duplicate edge does not throw - it creates another edge
   graph.create_edge("connects", "a", "b");
   auto edge2 = graph.create_edge("connects", "a", "b");
-  // A duplicate is created, so we have 2 edges
-  EXPECT_EQ(graph.get_num_edges(), 2);
+  EXPECT_EQ(graph.get_num_edges(), 1);
 }
 
 // Edge Query Tests
