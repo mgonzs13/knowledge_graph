@@ -63,8 +63,14 @@ inline std::string generateUUID() {
 
 KnowledgeGraph::KnowledgeGraph() {
 
-  this->node = std::make_shared<rclcpp::Node>("knowledge_graph_" +
-                                              generateUUID() + "_node");
+  // Create node options
+  rclcpp::NodeOptions node_options;
+  node_options.use_global_arguments(false);
+
+  // Initialize the ROS2 node for the knowledge graph
+  this->node = std::make_shared<rclcpp::Node>(
+      "knowledge_graph_" + generateUUID() + "_node", node_options);
+
   // Add this node's base interface to the executor for multi-threaded
   // execution.
   this->executor.add_node(this->node->get_node_base_interface());

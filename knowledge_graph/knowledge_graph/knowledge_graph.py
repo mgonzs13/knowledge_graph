@@ -84,7 +84,8 @@ class KnowledgeGraph(Graph):
         super().__init__()
         ## The ROS 2 node used for communication.
         self._node = ROSNode(
-            f"knowledge_graph_{str(uuid.uuid4()).replace('-', '')[:16]}_node"
+            f"knowledge_graph_{str(uuid.uuid4()).replace('-', '')[:16]}_node",
+            use_global_arguments=False,
         )
         ## Executor for managing node operations.
         self._executor = Executor()
