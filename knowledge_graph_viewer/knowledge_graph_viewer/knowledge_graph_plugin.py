@@ -160,7 +160,7 @@ class KnowledgeGraphPlugin(Plugin):
             return
 
         # layout graph and create qt items
-        (nodes, edges) = self.dot_to_qt.dotcode_to_qt_items(
+        nodes, edges = self.dot_to_qt.dotcode_to_qt_items(
             self._current_dotcode,
             highlight_level=3,
             same_label_siblings=False,
