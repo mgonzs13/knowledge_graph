@@ -22,10 +22,6 @@
 #include <string>
 #include <thread>
 
-#if __has_include("rclcpp/version.h")
-#include "rclcpp/version.h"
-#endif
-
 #include "knowledge_graph/graph/graph.hpp"
 
 #include "knowledge_graph_msgs/msg/edge.hpp"
@@ -326,10 +322,14 @@ protected:
 
 private:
   /// @brief Executor for managing multiple threads.
-#if defined(RCLCPP_VERSION_GTE) &&                                             \
-    RCLCPP_VERSION_GTE(29, 1, 1) // Jazzy and above
+#if __has_include("rclcpp/version.h")
+#include "rclcpp/version.h"
+#if RCLCPP_VERSION_GTE(29, 1, 1) // Jazzy, Kilted and Rolling
   rclcpp::experimental::executors::EventsExecutor executor;
-#else
+#else // Humble, Iron and Jazzy
+  rclcpp::executors::MultiThreadedExecutor executor;
+#endif
+#else // Foxy and Galactic
   rclcpp::executors::MultiThreadedExecutor executor;
 #endif
   /// @brief Thread for spinning the node.
