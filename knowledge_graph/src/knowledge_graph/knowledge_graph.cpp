@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <memory>
 #include <random>
-#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -75,12 +74,9 @@ KnowledgeGraph::KnowledgeGraph() {
   // execution.
   this->executor.add_node(this->node->get_node_base_interface());
 
-  // Initialize and detach the spin thread to run the executor asynchronously.
+  // Initialize the spin thread to run the executor asynchronously.
   this->spin_thread =
       std::make_unique<std::thread>(&rclcpp::Executor::spin, &this->executor);
-
-  // Detach the spin thread to allow background execution.
-  this->spin_thread->detach();
 
   this->graph_id = this->node->get_name();
 
@@ -99,6 +95,13 @@ KnowledgeGraph::KnowledgeGraph() {
       SYNC_TIMER_INTERVAL,
       std::bind(&KnowledgeGraph::reqsync_timer_callback, this));
   this->reqsync_timer_callback();
+}
+
+KnowledgeGraph::~KnowledgeGraph() {
+  this->executor.cancel();
+  if (this->spin_thread && this->spin_thread->joinable()) {
+    this->spin_thread->join();
+  }
 }
 
 void KnowledgeGraph::publish_update(

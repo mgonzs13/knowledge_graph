@@ -195,6 +195,14 @@ const std::vector<Node> Graph::remove_nodes(const std::vector<Node> &nodes) {
   for (const auto &node : nodes) {
     if (this->remove_node_internal(node)) {
       removed.push_back(node);
+      // Cascade: remove edges connected to this node (consistent with
+      // remove_node)
+      for (const auto &edge : this->get_edges()) {
+        if (edge.get_source_node() == node.get_name() ||
+            edge.get_target_node() == node.get_name()) {
+          this->remove_edge(edge);
+        }
+      }
     }
   }
   if (!removed.empty()) {

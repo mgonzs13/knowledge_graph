@@ -22,6 +22,10 @@
 #include <string>
 #include <thread>
 
+#if __has_include("rclcpp/version.h")
+#include "rclcpp/version.h"
+#endif
+
 #include "knowledge_graph/graph/graph.hpp"
 
 #include "knowledge_graph_msgs/msg/edge.hpp"
@@ -71,9 +75,9 @@ public:
   KnowledgeGraph(KnowledgeGraph &other) = delete;
 
   /**
-   * @brief Default destructor.
+   * @brief Destructor. Stops the executor and joins the spin thread.
    */
-  ~KnowledgeGraph() = default;
+  ~KnowledgeGraph();
 
   /************************************************************
    * Graph Management Functions
@@ -321,18 +325,14 @@ protected:
                  const std::vector<knowledge_graph_msgs::msg::Edge> &edges);
 
 private:
-  /// Executor for managing multiple threads.
-#if __has_include("rclcpp/version.h")
-#include "rclcpp/version.h"
-#if RCLCPP_VERSION_GTE(29, 1, 1) // Jazzy, Kilted and Rolling
+  /// @brief Executor for managing multiple threads.
+#if defined(RCLCPP_VERSION_GTE) &&                                             \
+    RCLCPP_VERSION_GTE(29, 1, 1) // Jazzy and above
   rclcpp::experimental::executors::EventsExecutor executor;
-#else // Humble, Iron and Jazzy
+#else
   rclcpp::executors::MultiThreadedExecutor executor;
 #endif
-#else // Foxy and Galactic
-  rclcpp::executors::MultiThreadedExecutor executor;
-#endif
-  /// Thread for spinning the node.
+  /// @brief Thread for spinning the node.
   std::unique_ptr<std::thread> spin_thread;
 
   /// @brief Publisher for graph update messages.
