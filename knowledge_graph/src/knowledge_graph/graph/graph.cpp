@@ -192,6 +192,7 @@ bool Graph::remove_node(const Node &node) {
 
 const std::vector<Node> Graph::remove_nodes(const std::vector<Node> &nodes) {
   std::vector<Node> removed;
+  std::vector<Edge> edges_to_remove;
   for (const auto &node : nodes) {
     if (this->remove_node_internal(node)) {
       removed.push_back(node);
@@ -200,16 +201,20 @@ const std::vector<Node> Graph::remove_nodes(const std::vector<Node> &nodes) {
       for (const auto &edge : this->get_edges()) {
         if (edge.get_source_node() == node.get_name() ||
             edge.get_target_node() == node.get_name()) {
-          this->remove_edge(edge);
+          edges_to_remove.push_back(edge);
         }
       }
     }
   }
+
+  this->remove_edges(edges_to_remove);
+
   if (!removed.empty()) {
     this->notify_callbacks(
         "remove", "node",
         std::vector<std::variant<Node, Edge>>(removed.begin(), removed.end()));
   }
+
   return removed;
 }
 

@@ -197,11 +197,23 @@ class Graph:
         :param nodes: The nodes to remove.
         """
         removed = []
+        edges_to_remove = []
         for node in nodes:
             if self._remove_node_internal(node):
                 removed.append(node)
+
+                for edge in self.get_edges():
+                    if (
+                        edge.get_source_node() == node.get_name()
+                        or edge.get_target_node() == node.get_name()
+                    ):
+                        edges_to_remove.append(edge)
+
+        self.remove_edges(edges_to_remove)
+
         if removed:
             self._notify_callbacks("remove", "node", removed)
+
         return removed
 
     def has_node(self, name: Union[str, Node]) -> bool:
