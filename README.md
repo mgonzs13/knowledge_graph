@@ -27,6 +27,7 @@ ROS 2 knowledge graph provides you a way to share a graph between nodes running 
 |   **Iron**   |        [![Iron Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/iron-build-test.yml?branch=master)         |
 |  **Jazzy**   |       [![Jazzy Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/jazzy-build-test.yml?branch=master)       |
 |  **Kilted**  |     [![Kilted Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/kilted-build-test.yml?branch=master)      |
+| **Lyrical**  |    [![Lyrical Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/lyrical-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/lyrical-build-test.yml?branch=master)    |
 | **Rolling**  |    [![Rolling Build](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml/badge.svg?branch=master)](https://github.com/mgonzs13/knowledge_graph/actions/workflows/rolling-build-test.yml?branch=master)    |
 
 </div>
