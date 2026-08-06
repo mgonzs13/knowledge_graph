@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(knowledge_graph_msgs)
 
 find_package(ament_cmake REQUIRED)
