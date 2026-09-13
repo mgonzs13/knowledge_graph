@@ -33,10 +33,10 @@ using std::placeholders::_1;
 using namespace std::chrono_literals;
 
 /// @brief Synchronization request timeout in seconds.
-static constexpr double SYNC_TIMEOUT_SEC = 1.0;
+static constexpr double SYNC_TIMEOUT_SEC = 30.0;
 
 /// @brief Timer interval for synchronization requests in milliseconds.
-static constexpr std::chrono::milliseconds SYNC_TIMER_INTERVAL{100};
+static constexpr std::chrono::milliseconds SYNC_TIMER_INTERVAL{1000};
 
 /**
  * @brief Generates a unique UUID as a string.
@@ -82,10 +82,10 @@ KnowledgeGraph::KnowledgeGraph() {
 
   this->update_pub =
       this->node->create_publisher<knowledge_graph_msgs::msg::GraphUpdate>(
-          "graph_update", rclcpp::QoS(100).reliable());
+          "graph_update", rclcpp::QoS(4096).reliable());
   this->update_sub =
       this->node->create_subscription<knowledge_graph_msgs::msg::GraphUpdate>(
-          "graph_update", rclcpp::QoS(100).reliable(),
+          "graph_update", rclcpp::QoS(4096).reliable(),
           std::bind(&KnowledgeGraph::update_callback, this, _1));
 
   this->last_ts = this->node->now();
@@ -137,6 +137,50 @@ void KnowledgeGraph::reqsync_timer_callback() {
   this->update_pub->publish(hello_msg);
 }
 
+void KnowledgeGraph::apply_or_defer_edge(const graph::Edge &edge) {
+  if (this->has_node(edge.get_source_node()) &&
+      this->has_node(edge.get_target_node())) {
+    graph::Graph::update_edge(edge);
+    return;
+  }
+
+  const auto same_edge = [&edge](const graph::Edge &pending) {
+    return pending.get_type() == edge.get_type() &&
+           pending.get_source_node() == edge.get_source_node() &&
+           pending.get_target_node() == edge.get_target_node();
+  };
+  if (std::none_of(this->pending_edges_.begin(), this->pending_edges_.end(),
+                   same_edge)) {
+    this->pending_edges_.push_back(edge);
+  }
+}
+
+void KnowledgeGraph::retry_pending_edges() {
+  auto edge = this->pending_edges_.begin();
+  while (edge != this->pending_edges_.end()) {
+    if (this->has_node(edge->get_source_node()) &&
+        this->has_node(edge->get_target_node())) {
+      graph::Graph::update_edge(*edge);
+      edge = this->pending_edges_.erase(edge);
+    } else {
+      ++edge;
+    }
+  }
+}
+
+void KnowledgeGraph::remove_pending_edge(const graph::Edge &edge) {
+  this->pending_edges_.erase(
+      std::remove_if(this->pending_edges_.begin(), this->pending_edges_.end(),
+                     [&edge](const graph::Edge &pending) {
+                       return pending.get_type() == edge.get_type() &&
+                              pending.get_source_node() ==
+                                  edge.get_source_node() &&
+                              pending.get_target_node() ==
+                                  edge.get_target_node();
+                     }),
+      this->pending_edges_.end());
+}
+
 void KnowledgeGraph::update_callback(
     knowledge_graph_msgs::msg::GraphUpdate::UniquePtr msg) {
   const auto &author_id = msg->node_id;
@@ -149,12 +193,28 @@ void KnowledgeGraph::update_callback(
     return;
   }
 
+  // A remote publisher can have several graph updates in flight. Applying an
+  // older message after a newer one can restore stale goals or locations.
+  if (operation != knowledge_graph_msgs::msg::GraphUpdate::REQSYNC &&
+      operation != knowledge_graph_msgs::msg::GraphUpdate::SYNC) {
+    const rclcpp::Time received_ts(ts);
+    const auto previous = this->last_remote_ts_.find(author_id);
+    if (previous != this->last_remote_ts_.end() &&
+        received_ts < previous->second) {
+      RCLCPP_DEBUG(this->node->get_logger(),
+                   "Ignoring stale graph update from %s", author_id.c_str());
+      return;
+    }
+    this->last_remote_ts_[author_id] = received_ts;
+  }
+
   // Check for out-of-order updates (except for sync operations)
   if (operation != knowledge_graph_msgs::msg::GraphUpdate::REQSYNC &&
       operation != knowledge_graph_msgs::msg::GraphUpdate::SYNC &&
       rclcpp::Time(ts) < this->last_ts) {
-    RCLCPP_WARN(this->node->get_logger(), "UNORDERED UPDATE [%d] %lf > %lf",
-                operation, this->last_ts.seconds(), rclcpp::Time(ts).seconds());
+    RCLCPP_DEBUG(this->node->get_logger(), "UNORDERED UPDATE [%d] %lf > %lf",
+                 operation, this->last_ts.seconds(),
+                 rclcpp::Time(ts).seconds());
   }
 
   std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
@@ -168,6 +228,9 @@ void KnowledgeGraph::update_callback(
         graph::Graph::remove_node(node);
       }
     }
+    if (operation == knowledge_graph_msgs::msg::GraphUpdate::UPDATE) {
+      this->retry_pending_edges();
+    }
     break;
   }
 
@@ -175,8 +238,9 @@ void KnowledgeGraph::update_callback(
     for (const auto &edge_msg : msg->edges) {
       graph::Edge edge(edge_msg);
       if (operation == knowledge_graph_msgs::msg::GraphUpdate::UPDATE) {
-        graph::Graph::update_edge(edge);
+        this->apply_or_defer_edge(edge);
       } else if (operation == knowledge_graph_msgs::msg::GraphUpdate::REMOVE) {
+        this->remove_pending_edge(edge);
         graph::Graph::remove_edge(edge);
       }
     }
@@ -188,7 +252,6 @@ void KnowledgeGraph::update_callback(
 
     if (operation == knowledge_graph_msgs::msg::GraphUpdate::SYNC &&
         msg->target_node == this->graph_id) {
-      this->reqsync_timer->cancel();
       this->update_graph(remote_graph);
     } else if (operation == knowledge_graph_msgs::msg::GraphUpdate::REQSYNC) {
       // Respond with current graph state
@@ -218,8 +281,9 @@ void KnowledgeGraph::update_graph(const graph::Graph &graph) {
   }
 
   for (const auto &edge : graph.get_edges()) {
-    graph::Graph::update_edge(edge);
+    this->apply_or_defer_edge(edge);
   }
+  this->retry_pending_edges();
 }
 
 knowledge_graph_msgs::msg::Graph KnowledgeGraph::to_msg() const {

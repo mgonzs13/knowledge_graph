@@ -42,7 +42,7 @@ class KnowledgeGraph(Graph):
     # QoS profile for graph updates
     _UPDATE_QOS = QoSProfile(
         history=QoSHistoryPolicy.KEEP_LAST,
-        depth=100,
+        depth=4096,
         reliability=QoSReliabilityPolicy.RELIABLE,
     )
 
@@ -104,6 +104,8 @@ class KnowledgeGraph(Graph):
 
         ## Mutex for thread-safe graph operations (reentrant to allow nested calls)
         self._graph_mutex = RLock()
+        ## Remote edges waiting for their endpoint nodes to arrive.
+        self._pending_edges: List[Edge] = []
 
         ## Publisher for graph updates
         self._update_pub = self._node.create_publisher(
@@ -115,7 +117,7 @@ class KnowledgeGraph(Graph):
         )
 
         ## Timer for requesting graph synchronization
-        self._reqsync_timer = self._node.create_timer(0.1, self._reqsync_timer_callback)
+        self._reqsync_timer = self._node.create_timer(1.0, self._reqsync_timer_callback)
         self._reqsync_timer_callback()
 
     # =========================================================================
@@ -124,9 +126,50 @@ class KnowledgeGraph(Graph):
     def _reqsync_timer_callback(self) -> None:
         """@brief Timer callback for requesting graph synchronization."""
         elapsed = (self._node.get_clock().now() - self._start_time).nanoseconds
-        if Time(nanoseconds=elapsed).seconds_nanoseconds()[0] > 1.0:
+        if Time(nanoseconds=elapsed).seconds_nanoseconds()[0] > 30.0:
             self._reqsync_timer.cancel()
         self._publish_update(GraphUpdate.REQSYNC, self)
+
+    @staticmethod
+    def _edge_identity(edge: Edge):
+        return (
+            edge.get_type(),
+            edge.get_source_node(),
+            edge.get_target_node(),
+        )
+
+    def _apply_or_defer_edge(self, edge: Edge) -> None:
+        if self.has_node(edge.get_source_node()) and self.has_node(
+            edge.get_target_node()
+        ):
+            Graph.update_edge(self, edge)
+            return
+
+        edge_identity = self._edge_identity(edge)
+        if all(
+            self._edge_identity(pending) != edge_identity
+            for pending in self._pending_edges
+        ):
+            self._pending_edges.append(edge)
+
+    def _retry_pending_edges(self) -> None:
+        still_pending = []
+        for edge in self._pending_edges:
+            if self.has_node(edge.get_source_node()) and self.has_node(
+                edge.get_target_node()
+            ):
+                Graph.update_edge(self, edge)
+            else:
+                still_pending.append(edge)
+        self._pending_edges = still_pending
+
+    def _remove_pending_edge(self, edge: Edge) -> None:
+        edge_identity = self._edge_identity(edge)
+        self._pending_edges = [
+            pending
+            for pending in self._pending_edges
+            if self._edge_identity(pending) != edge_identity
+        ]
 
     def _publish_update(
         self,
@@ -199,6 +242,7 @@ class KnowledgeGraph(Graph):
                     for node_msg in msg.nodes:
                         node = Node(msg=node_msg)
                         Graph.update_node(self, node)
+                    self._retry_pending_edges()
                 elif operation == GraphUpdate.REMOVE:
                     for node_msg in msg.nodes:
                         node = Node(msg=node_msg)
@@ -208,16 +252,16 @@ class KnowledgeGraph(Graph):
                 if operation == GraphUpdate.UPDATE:
                     for edge_msg in msg.edges:
                         edge = Edge(msg=edge_msg)
-                        Graph.update_edge(self, edge)
+                        self._apply_or_defer_edge(edge)
                 elif operation == GraphUpdate.REMOVE:
                     for edge_msg in msg.edges:
                         edge = Edge(msg=edge_msg)
+                        self._remove_pending_edge(edge)
                         Graph.remove_edge(self, edge)
 
             elif element == GraphUpdate.GRAPH:
                 remote_graph = Graph(msg=msg.graph)
                 if operation == GraphUpdate.SYNC and msg.target_node == self._graph_id:
-                    self._reqsync_timer.cancel()
                     self.update_graph(remote_graph)
                 elif operation == GraphUpdate.REQSYNC and msg.node_id != self._graph_id:
                     self._publish_update(GraphUpdate.SYNC, self, target_node=msg.node_id)
@@ -234,7 +278,8 @@ class KnowledgeGraph(Graph):
             for node in graph.get_nodes():
                 Graph.update_node(self, node)
             for edge in graph.get_edges():
-                Graph.update_edge(self, edge)
+                self._apply_or_defer_edge(edge)
+            self._retry_pending_edges()
 
     def to_msg(self):
         with self._graph_mutex:

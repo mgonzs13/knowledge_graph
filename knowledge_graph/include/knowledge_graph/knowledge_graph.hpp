@@ -21,6 +21,8 @@
 #include <optional>
 #include <string>
 #include <thread>
+#include <vector>
+#include <unordered_map>
 
 #include "knowledge_graph/graph/graph.hpp"
 
@@ -309,6 +311,18 @@ protected:
   void reqsync_timer_callback();
 
   /**
+   * @brief Apply an edge when both endpoint nodes exist, or defer it.
+   * @param edge The remotely received edge.
+   */
+  void apply_or_defer_edge(const graph::Edge &edge);
+
+  /** @brief Apply deferred edges whose endpoint nodes are now available. */
+  void retry_pending_edges();
+
+  /** @brief Remove a matching edge from the deferred update queue. */
+  void remove_pending_edge(const graph::Edge &edge);
+
+  /**
    * @brief Publishes a graph update message.
    * @param operation The operation type (UPDATE, REMOVE).
    * @param element The element type (NODE, EDGE).
@@ -346,6 +360,12 @@ private:
 
   /// @brief Start time for synchronization timeout.
   rclcpp::Time start_time;
+
+  /// @brief Remote edges waiting for their endpoint nodes to arrive.
+  std::vector<graph::Edge> pending_edges_;
+
+  /// @brief Highest timestamp accepted from each remote graph publisher.
+  std::unordered_map<std::string, rclcpp::Time> last_remote_ts_;
 
   /// @brief Mutex for thread-safe graph operations.
   mutable std::recursive_mutex graph_mutex_;
