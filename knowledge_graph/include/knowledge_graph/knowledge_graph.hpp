@@ -33,6 +33,9 @@
 
 #include "rclcpp/rclcpp.hpp"
 
+/// @brief Test fixture that observes the deferred-edge queue.
+class KnowledgeGraphTest;
+
 namespace knowledge_graph {
 
 /**
@@ -323,6 +326,18 @@ protected:
   void remove_pending_edge(const graph::Edge &edge);
 
   /**
+   * @brief Remove deferred edges that reference a removed node.
+   *
+   * A remote edge update whose endpoint nodes are missing is deferred until
+   * the nodes arrive.  When a node is removed for good (for example a
+   * consumed object whose name is never reused), its deferred edges can never
+   * become applicable, so drop them instead of retaining them forever.
+   *
+   * @param node_name Name of the removed node.
+   */
+  void remove_pending_edges_for_node(const std::string &node_name);
+
+  /**
    * @brief Publishes a graph update message.
    * @param operation The operation type (UPDATE, REMOVE).
    * @param element The element type (NODE, EDGE).
@@ -366,6 +381,9 @@ private:
 
   /// @brief Highest timestamp accepted from each remote graph publisher.
   std::unordered_map<std::string, rclcpp::Time> last_remote_ts_;
+
+  /// @brief Test fixture access to the deferred-edge queue and remote path.
+  friend class ::KnowledgeGraphTest;
 
   /// @brief Mutex for thread-safe graph operations.
   mutable std::recursive_mutex graph_mutex_;

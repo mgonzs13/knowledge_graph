@@ -18,6 +18,7 @@ from knowledge_graph.knowledge_graph import KnowledgeGraph
 from knowledge_graph.graph.node import Node
 from knowledge_graph.graph.edge import Edge
 from knowledge_graph.graph.graph import Graph
+from knowledge_graph_msgs.msg import GraphUpdate
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -36,6 +37,8 @@ def knowledge_graph():
     kg = KnowledgeGraph.get_instance()
     # Clear all callbacks first to avoid dangling references from previous tests
     kg.clear_callbacks()
+    # Drop deferred edges left over from a previous test
+    kg._pending_edges.clear()
     # Clear the graph before each test
     for edge in kg.get_edges():
         kg.remove_edge(edge)
@@ -661,3 +664,46 @@ class TestKnowledgeGraphCallbacks:
         knowledge_graph.remove_edge(non_existent_edge)
 
         assert len(callback_data) == 0
+
+
+class TestKnowledgeGraphPendingEdges:
+    """Test suite for deferred edge cleanup when nodes are removed."""
+
+    def test_remove_pending_edges_for_node_drops_only_matching_edges(
+        self, knowledge_graph
+    ):
+        """Only deferred edges that reference the removed node are dropped."""
+        knowledge_graph._apply_or_defer_edge(Edge("type_a", "gone", "missing_a"))
+        knowledge_graph._apply_or_defer_edge(Edge("type_b", "missing_b", "gone"))
+        knowledge_graph._apply_or_defer_edge(Edge("type_c", "other", "missing_c"))
+        assert len(knowledge_graph._pending_edges) == 3
+
+        knowledge_graph._remove_pending_edges_for_node("gone")
+
+        assert len(knowledge_graph._pending_edges) == 1
+        assert knowledge_graph._pending_edges[0].get_type() == "type_c"
+
+    def test_local_remove_node_drops_its_deferred_edges(self, knowledge_graph):
+        """Removing a local node drops its deferred edges."""
+        knowledge_graph.create_node("gone", "volatiles")
+        knowledge_graph._apply_or_defer_edge(Edge("volatiles_stored", "gone", "missing"))
+        assert len(knowledge_graph._pending_edges) == 1
+
+        knowledge_graph.remove_node(knowledge_graph.get_node("gone"))
+
+        assert knowledge_graph._pending_edges == []
+
+    def test_remote_remove_node_drops_its_deferred_edges(self, knowledge_graph):
+        """A remote REMOVE drops deferred edges for a node we never had."""
+        knowledge_graph._apply_or_defer_edge(Edge("volatiles_stored", "gone", "missing"))
+        assert len(knowledge_graph._pending_edges) == 1
+
+        msg = GraphUpdate()
+        msg.stamp = knowledge_graph._node.get_clock().now().to_msg()
+        msg.node_id = "remote_graph"
+        msg.operation_type = GraphUpdate.REMOVE
+        msg.element_type = GraphUpdate.NODE
+        msg.nodes = [Node("gone", "volatiles").to_msg()]
+        knowledge_graph._update_callback(msg)
+
+        assert knowledge_graph._pending_edges == []

@@ -171,6 +171,25 @@ class KnowledgeGraph(Graph):
             if self._edge_identity(pending) != edge_identity
         ]
 
+    def _remove_pending_edges_for_node(self, node_name: str) -> None:
+        """
+        @brief Drop deferred edges that reference a removed node.
+
+        A remote edge update whose endpoint nodes are missing is deferred
+        until the nodes arrive.  When a node is removed for good (for example
+        a consumed object whose name is never reused), its deferred edges can
+        never become applicable, so drop them instead of retaining them
+        forever.
+
+        @param node_name Name of the removed node.
+        """
+        self._pending_edges = [
+            pending
+            for pending in self._pending_edges
+            if pending.get_source_node() != node_name
+            and pending.get_target_node() != node_name
+        ]
+
     def _publish_update(
         self,
         operation_type: int,
@@ -247,6 +266,7 @@ class KnowledgeGraph(Graph):
                     for node_msg in msg.nodes:
                         node = Node(msg=node_msg)
                         Graph.remove_node(self, node)
+                        self._remove_pending_edges_for_node(node.get_name())
 
             elif element == GraphUpdate.EDGE:
                 if operation == GraphUpdate.UPDATE:
@@ -308,12 +328,15 @@ class KnowledgeGraph(Graph):
         with self._graph_mutex:
             removed = Graph.remove_node(self, node)
             if removed:
+                self._remove_pending_edges_for_node(node.get_name())
                 self._publish_update(GraphUpdate.REMOVE, node)
             return removed
 
     def remove_nodes(self, nodes: List[Node]) -> List[Node]:
         with self._graph_mutex:
             removed_nodes = Graph.remove_nodes(self, nodes)
+            for node in removed_nodes:
+                self._remove_pending_edges_for_node(node.get_name())
             self._publish_update(GraphUpdate.REMOVE, removed_nodes)
             return removed_nodes
 

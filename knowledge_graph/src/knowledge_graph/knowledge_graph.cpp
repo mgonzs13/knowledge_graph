@@ -181,6 +181,17 @@ void KnowledgeGraph::remove_pending_edge(const graph::Edge &edge) {
       this->pending_edges_.end());
 }
 
+void KnowledgeGraph::remove_pending_edges_for_node(
+    const std::string &node_name) {
+  this->pending_edges_.erase(
+      std::remove_if(this->pending_edges_.begin(), this->pending_edges_.end(),
+                     [&node_name](const graph::Edge &pending) {
+                       return pending.get_source_node() == node_name ||
+                              pending.get_target_node() == node_name;
+                     }),
+      this->pending_edges_.end());
+}
+
 void KnowledgeGraph::update_callback(
     knowledge_graph_msgs::msg::GraphUpdate::UniquePtr msg) {
   const auto &author_id = msg->node_id;
@@ -226,6 +237,7 @@ void KnowledgeGraph::update_callback(
         graph::Graph::update_node(node);
       } else if (operation == knowledge_graph_msgs::msg::GraphUpdate::REMOVE) {
         graph::Graph::remove_node(node);
+        this->remove_pending_edges_for_node(node.get_name());
       }
     }
     if (operation == knowledge_graph_msgs::msg::GraphUpdate::UPDATE) {
@@ -327,6 +339,7 @@ bool KnowledgeGraph::remove_node(const graph::Node &node) {
   std::lock_guard<std::recursive_mutex> lock(this->graph_mutex_);
   bool removed = graph::Graph::remove_node(node);
   if (removed) {
+    this->remove_pending_edges_for_node(node.get_name());
     this->publish_update(
         knowledge_graph_msgs::msg::GraphUpdate::REMOVE,
         knowledge_graph_msgs::msg::GraphUpdate::NODE,
@@ -341,6 +354,7 @@ KnowledgeGraph::remove_nodes(const std::vector<graph::Node> &nodes) {
   std::vector<graph::Node> removed_nodes = graph::Graph::remove_nodes(nodes);
   std::vector<knowledge_graph_msgs::msg::Node> node_msgs;
   for (const auto &node : removed_nodes) {
+    this->remove_pending_edges_for_node(node.get_name());
     node_msgs.push_back(node.to_msg());
   }
   if (!removed_nodes.empty()) {

@@ -23,6 +23,7 @@
 #include "knowledge_graph/graph/node.hpp"
 #include "knowledge_graph/knowledge_graph.hpp"
 #include "knowledge_graph_msgs/msg/graph.hpp"
+#include "knowledge_graph_msgs/msg/graph_update.hpp"
 
 using namespace knowledge_graph;
 
@@ -35,6 +36,8 @@ protected:
     // Clear all callbacks first to avoid dangling references from previous
     // tests
     kg->clear_callbacks();
+    // Drop deferred edges left over from a previous test.
+    kg->pending_edges_.clear();
     // Clear the graph before each test
     for (const auto &edge : kg->get_edges()) {
       kg->remove_edge(edge);
@@ -42,6 +45,33 @@ protected:
     for (const auto &node : kg->get_nodes()) {
       kg->remove_node(node);
     }
+  }
+
+  /// @brief Defer an edge update as if it arrived from a remote replica.
+  void defer_edge(const graph::Edge &edge) { kg->apply_or_defer_edge(edge); }
+
+  /// @brief Number of edges currently waiting for their endpoint nodes.
+  std::size_t num_pending_edges() const { return kg->pending_edges_.size(); }
+
+  /// @brief Deferred edge at the given position.
+  const graph::Edge &pending_edge(std::size_t index) const {
+    return kg->pending_edges_.at(index);
+  }
+
+  /// @brief Drop deferred edges that reference the given node.
+  void drop_pending_edges_for_node(const std::string &node_name) {
+    kg->remove_pending_edges_for_node(node_name);
+  }
+
+  /// @brief Apply a remote node REMOVE exactly as the subscription would.
+  void remote_remove_node(const graph::Node &node) {
+    auto msg = std::make_unique<knowledge_graph_msgs::msg::GraphUpdate>();
+    msg->stamp = kg->node->get_clock()->now();
+    msg->node_id = "remote_graph";
+    msg->operation_type = knowledge_graph_msgs::msg::GraphUpdate::REMOVE;
+    msg->element_type = knowledge_graph_msgs::msg::GraphUpdate::NODE;
+    msg->nodes.push_back(node.to_msg());
+    kg->update_callback(std::move(msg));
   }
 };
 
@@ -611,6 +641,43 @@ TEST_F(KnowledgeGraphCallbackTest, NoCallbackOnFailedRemoveEdge) {
   kg->remove_edge(non_existent_edge);
 
   EXPECT_EQ(callback_data.size(), 0u);
+}
+
+TEST_F(KnowledgeGraphTest, RemovePendingEdgesForNodeDropsOnlyMatchingEdges) {
+  // Edges that reference a missing node are deferred until the node arrives.
+  defer_edge(graph::Edge("type_a", "gone", "missing_a"));
+  defer_edge(graph::Edge("type_b", "missing_b", "gone"));
+  defer_edge(graph::Edge("type_c", "other", "missing_c"));
+  ASSERT_EQ(num_pending_edges(), 3u);
+
+  drop_pending_edges_for_node("gone");
+
+  // Only the edges that referenced "gone" are dropped.
+  ASSERT_EQ(num_pending_edges(), 1u);
+  EXPECT_EQ(pending_edge(0).get_type(), "type_c");
+}
+
+TEST_F(KnowledgeGraphTest, LocalRemoveNodeDropsItsDeferredEdges) {
+  kg->create_node("gone", "volatiles");
+  defer_edge(graph::Edge("volatiles_stored", "gone", "missing"));
+  ASSERT_EQ(num_pending_edges(), 1u);
+
+  kg->remove_node(kg->get_node("gone"));
+
+  // The node name is never reused, so the deferred edge could never apply.
+  EXPECT_EQ(num_pending_edges(), 0u);
+}
+
+TEST_F(KnowledgeGraphTest, RemoteRemoveNodeDropsItsDeferredEdges) {
+  // A replica that never had the node can still hold a deferred edge for it;
+  // the remote REMOVE must drop the entry even though there is no local node
+  // to remove.
+  defer_edge(graph::Edge("volatiles_stored", "gone", "missing"));
+  ASSERT_EQ(num_pending_edges(), 1u);
+
+  remote_remove_node(graph::Node("gone", "volatiles"));
+
+  EXPECT_EQ(num_pending_edges(), 0u);
 }
 
 int main(int argc, char **argv) {
